@@ -12,8 +12,11 @@ import Foundation
 public struct ForecastResponse: Sendable, Hashable {
     /// The events behind each served probability, in the request's units.
     public var thresholds: ProbabilityThresholds?
-    /// The answers to the request's probability terms, in the caller's
-    /// order (a repeated term repeats its answer); empty when none were asked.
+    /// The answers to the request's probability terms, in the caller's order.
+    ///
+    /// A repeated term repeats its answer; a term the server did not answer
+    /// is left out (never filled in). Empty when none were asked. Look one
+    /// up with ``probability(for:)``.
     public var probabilities: [ProbabilityResult]
     /// The answers to the request's window totals, in the caller's order;
     /// empty when none were asked.

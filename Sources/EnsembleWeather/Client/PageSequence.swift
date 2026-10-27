@@ -46,7 +46,7 @@ public struct PageSequence<Element: Sendable>: AsyncSequence, Sendable {
                 hasFetched = true
                 buffer = page.items
                 index = 0
-                cursor = page.nextCursor
+                cursor = page.nextCursor?.isEmpty == true ? nil : page.nextCursor
                 if page.items.isEmpty && cursor == nil { isFinished = true }
             }
             defer { index += 1 }
