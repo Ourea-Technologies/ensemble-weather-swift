@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Builds every example and runs it against the local mock API
+# (scripts/mock_server.py), failing if any example exits non-zero.
+# Examples that need a Pro key skip themselves unless OUREA_API_KEY is set.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+examples=(Quickstart PointForecast ChanceOfSnow StormTotal SearchAndCatalog CurrentAndAlerts ErrorHandling Units)
+
+swift build --package-path examples
+bin="$(swift build --package-path examples --show-bin-path)"
+
+port_file="$(mktemp)"
+python3 scripts/mock_server.py > "$port_file" &
+server=$!
+trap 'kill "$server" 2>/dev/null || true; wait "$server" 2>/dev/null || true; rm -f "$port_file"' EXIT
+for _ in $(seq 50); do [[ -s "$port_file" ]] && break; sleep 0.1; done
+export OUREA_BASE_URL="http://127.0.0.1:$(head -n1 "$port_file")"
+
+failed=0
+for example in "${examples[@]}"; do
+  echo "== $example"
+  if ! "$bin/$example"; then
+    echo "FAILED: $example" >&2
+    failed=1
+  fi
+done
+exit $failed
