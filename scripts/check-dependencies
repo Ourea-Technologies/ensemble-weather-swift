@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-2-Clause
+"""Fails if the EnsembleWeather library target has any dependency, or if
+Package.swift declares a package without a justification line in the
+"Dependencies" section of CONTRIBUTING.md (SDK-STANDARD "Dependencies")."""
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path(__file__).resolve().parent.parent
+manifest = json.loads(
+    subprocess.run(["swift", "package", "dump-package"], cwd=root, check=True,
+                   capture_output=True, text=True).stdout)
+
+failures = []
+for target in manifest["targets"]:
+    if target["name"] == "EnsembleWeather" and target.get("dependencies"):
+        failures.append(f"the library target has dependencies: {target['dependencies']}")
+
+contributing = (root / "CONTRIBUTING.md").read_text()
+section = contributing.split("## Dependencies", 1)[-1].split("\n## ", 1)[0]
+justified = set(re.findall(r"^- `([^`]+)`:", section, flags=re.MULTILINE))
+
+for dependency in manifest.get("dependencies", []):
+    kind = next(iter(dependency))
+    details = dependency[kind][0]
+    identity = details.get("identity") or details.get("name") or str(details)
+    if identity not in justified:
+        failures.append(f"dependency '{identity}' has no justification in CONTRIBUTING.md")
+
+if failures:
+    for failure in failures:
+        print(f"error: {failure}", file=sys.stderr)
+    sys.exit(1)
+print(f"library target has no dependencies; {len(manifest.get('dependencies', []))} "
+      "dev dependency(ies), all justified in CONTRIBUTING.md")

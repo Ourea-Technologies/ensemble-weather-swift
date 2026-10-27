@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Builds the DocC archive for EnsembleWeather into docs-build/ (or $1),
+# treating every documentation warning as an error. The Swift Package Index
+# builds the hosted reference from .spi.yml; Xcode users can also run
+# `xcodebuild docbuild -scheme EnsembleWeather -destination generic/platform=iOS`.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+out="${1:-docs-build}"
+mkdir -p "$out"
+swift package --allow-writing-to-directory "$out" \
+  generate-documentation --target EnsembleWeather --warnings-as-errors --output-path "$out"

@@ -137,7 +137,7 @@ final class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendab
                     status: entry.response?.statusCode))
         } else if let error {
             entry.continuation.resume(throwing: error)
-        } else if let response = entry.response {
+        } else if let response = entry.response ?? (task.response as? HTTPURLResponse) {
             var headers = HTTPHeaders()
             for (name, value) in response.allHeaderFields {
                 if let name = name as? String { headers[name] = "\(value)" }

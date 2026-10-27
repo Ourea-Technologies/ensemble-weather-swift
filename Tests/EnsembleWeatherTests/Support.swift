@@ -14,26 +14,23 @@ let repositoryRoot = URL(fileURLWithPath: #filePath)
 let specDirectory = repositoryRoot.appendingPathComponent("spec")
 
 /// A transport that answers from a queue and records what was sent.
-final class MockTransport: HTTPTransport, @unchecked Sendable {
-    private let lock = NSLock()
-    private var queue: [Result<HTTPResponse, any Error>]
-    private var sent: [HTTPRequest] = []
+final class MockTransport: HTTPTransport {
+    private let queue: Locked<[Result<HTTPResponse, any Error>]>
+    private let sent = Locked<[HTTPRequest]>([])
 
     init(_ responses: [HTTPResponse]) {
-        queue = responses.map { .success($0) }
+        queue = Locked(responses.map { .success($0) })
     }
 
     init(results: [Result<HTTPResponse, any Error>]) {
-        queue = results
+        queue = Locked(results)
     }
 
-    var requests: [HTTPRequest] { lock.withLock { sent } }
+    var requests: [HTTPRequest] { sent.withLock { $0 } }
 
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
-        let next: Result<HTTPResponse, any Error>? = lock.withLock {
-            sent.append(request)
-            return queue.isEmpty ? nil : queue.removeFirst()
-        }
+        sent.withLock { $0.append(request) }
+        let next = queue.withLock { $0.isEmpty ? nil : $0.removeFirst() }
         guard let next else {
             throw URLError(.resourceUnavailable)
         }
@@ -42,24 +39,22 @@ final class MockTransport: HTTPTransport, @unchecked Sendable {
 }
 
 /// A clock that never sleeps and records the delays asked for.
-final class FakeClock: RetryClock, @unchecked Sendable {
-    private let lock = NSLock()
-    private var recorded: [TimeInterval] = []
+final class FakeClock: RetryClock {
+    private let recorded = Locked<[TimeInterval]>([])
     let now = Date(timeIntervalSince1970: 1_794_700_800)  // 2026-11-15T00:00:00Z
 
-    var sleeps: [TimeInterval] { lock.withLock { recorded } }
+    var sleeps: [TimeInterval] { recorded.withLock { $0 } }
 
     func sleep(seconds: TimeInterval) async throws {
-        lock.withLock { recorded.append(seconds) }
+        recorded.withLock { $0.append(seconds) }
     }
 }
 
 /// Collects deprecation notices.
-final class NoticeCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var collected: [DeprecationNotice] = []
-    var notices: [DeprecationNotice] { lock.withLock { collected } }
-    func add(_ notice: DeprecationNotice) { lock.withLock { collected.append(notice) } }
+final class NoticeCollector: Sendable {
+    private let collected = Locked<[DeprecationNotice]>([])
+    var notices: [DeprecationNotice] { collected.withLock { $0 } }
+    func add(_ notice: DeprecationNotice) { collected.withLock { $0.append(notice) } }
 }
 
 /// A test configuration: no environment, a mock transport, a fake clock and
