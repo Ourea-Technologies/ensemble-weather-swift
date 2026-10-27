@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://docs.oureawx.com/swift
+    about: Guides for this SDK and the Ourea API.
+  - name: Report a security vulnerability
+    url: https://github.com/Ourea-Technologies/ensemble-weather-swift/security/advisories/new
+    about: Report privately, never in a public issue.

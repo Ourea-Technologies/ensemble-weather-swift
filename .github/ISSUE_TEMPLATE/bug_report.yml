@@ -1,0 +1,34 @@
+name: Bug report
+description: Something in the SDK does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Never paste an API key.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      render: swift
+  - type: input
+    id: version
+    attributes:
+      label: SDK version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Swift version and platform
+      placeholder: "Swift 6.2, iOS 18 / macOS 15 / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: request-id
+    attributes:
+      label: X-Request-Id of a failing response (EnsembleWeatherError.requestID), if any

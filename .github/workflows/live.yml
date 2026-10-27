@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Nightly contract run against the live API with a read-only CI key. Never
+# runs on pull requests (forks cannot reach the secret).
+name: Live
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Quickstart and contract run against api.oureawx.com
+    runs-on: ubuntu-24.04
+    if: github.repository == 'Ourea-Technologies/ensemble-weather-swift'
+    container: swift:6.2-noble@sha256:e508ef1e4be68087f720de622b91cbf1e32799a7aa96134b35e6f1a1d656db7a
+    environment: live
+    env:
+      OUREA_API_KEY: ${{ secrets.OUREA_CI_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Quickstart, anonymous
+        run: env -u OUREA_API_KEY swift run --package-path examples Quickstart
+      - name: Contract run with the read-only key
+        run: |
+          for example in PointForecast ChanceOfSnow StormTotal SearchAndCatalog CurrentAndAlerts ErrorHandling Units; do
+            echo "== $example"
+            swift run --package-path examples "$example"
+          done

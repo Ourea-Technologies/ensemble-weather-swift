@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: BSD-2-Clause
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Format, lint and repository checks
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: swift --version
+      - name: swift-format lint --strict
+        run: swift format lint --strict --recursive Sources Tests examples Package.swift
+      - name: No force unwraps or try! outside tests
+        run: scripts/check-unsafe-swift
+      - name: README quickstart matches the example
+        run: scripts/check-readme
+      - name: The library target has zero dependencies
+        run: scripts/check-dependencies
+      - name: spec/ matches spec/VERSION
+        run: scripts/sync-spec --check
+
+  macos:
+    name: macOS (Xcode, Swift 6.2)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: swift --version
+      - name: Build (Swift 6 strict concurrency, warnings as errors)
+        run: swift build -Xswiftc -warnings-as-errors
+      - name: Unit tests, shared vectors and spec drift
+        run: swift test --enable-code-coverage
+      - name: Coverage
+        run: |
+          python3 -c 'import json,sys; t=json.load(open(sys.argv[1]))["data"][0]["totals"]["lines"]; print(f"Line coverage: {t[\"percent\"]:.1f}% ({t[\"covered\"]}/{t[\"count\"]})")' \
+            "$(swift test --show-codecov-path)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Build for iOS, tvOS and watchOS
+        run: |
+          for platform in iOS tvOS watchOS; do
+            xcodebuild build -quiet -scheme ensemble-weather-swift -destination "generic/platform=$platform"
+          done
+      - name: Examples against the local mock
+        run: scripts/run-examples
+      - name: Documentation (DocC, warnings as errors)
+        run: scripts/build-docs
+
+  linux:
+    name: Linux (Swift ${{ matrix.swift }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - swift: "6.1"
+            image: swift:6.1-noble@sha256:92cafdba8c519c32b83d5aa50539fb3d5a534bc87c3d9437bf6e8984aa1be4f3
+          - swift: "6.2"
+            image: swift:6.2-noble@sha256:e508ef1e4be68087f720de622b91cbf1e32799a7aa96134b35e6f1a1d656db7a
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Python for the mock API
+        run: command -v python3 || (apt-get update && apt-get install -y --no-install-recommends python3)
+      - run: swift --version
+      - name: Build (warnings as errors)
+        run: swift build -Xswiftc -warnings-as-errors
+      - name: Unit tests, shared vectors and spec drift
+        run: swift test
+      - name: Examples against the local mock
+        run: scripts/run-examples

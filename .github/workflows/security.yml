@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# SDK-STANDARD "Security": dependency audit, static security lint and a
+# workflow audit on every push, every PR and weekly.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "41 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-scanner:
+    name: osv-scanner on Package.resolved
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+        with:
+          scan-args: |-
+            --lockfile=Package.resolved
+
+  static-lint:
+    name: swift-format lint and the unsafe-Swift gate
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: swift format lint --strict --recursive Sources Tests examples Package.swift
+      - name: No force unwraps, as! or try! outside tests
+        run: scripts/check-unsafe-swift
+      - name: The library target has zero dependencies
+        run: scripts/check-dependencies
+
+  zizmor:
+    name: zizmor on the workflows
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - run: pip install zizmor==1.31.1
+      - run: zizmor --persona=auditor --min-severity=low .github/workflows
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: low
+          allow-licenses: BSD-2-Clause, BSD-3-Clause, MIT, Apache-2.0, ISC, 0BSD, Unlicense

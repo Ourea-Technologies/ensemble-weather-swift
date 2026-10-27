@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest an improvement to the SDK.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: The API you have in mind. The SDK never computes statistics; if this needs a new server query, say so.
