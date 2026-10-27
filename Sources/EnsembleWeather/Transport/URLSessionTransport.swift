@@ -16,7 +16,7 @@ public final class URLSessionTransport: HTTPTransport {
     public static let defaultMaximumBodyBytes = 64 * 1024 * 1024
 
     private let session: URLSession
-    private let delegate: SessionDelegate
+    let delegate: SessionDelegate
 
     /// Creates a transport.
     ///
@@ -24,8 +24,12 @@ public final class URLSessionTransport: HTTPTransport {
     ///   larger body ends the request with an
     ///   ``EnsembleWeatherError/Category/invalidResponse`` error instead of
     ///   using unbounded memory. At most 64 MiB.
-    public init(maximumBodyBytes: Int = URLSessionTransport.defaultMaximumBodyBytes) {
-        let configuration = URLSessionConfiguration.ephemeral
+    public convenience init(maximumBodyBytes: Int = URLSessionTransport.defaultMaximumBodyBytes) {
+        self.init(configuration: .ephemeral, maximumBodyBytes: maximumBodyBytes)
+    }
+
+    /// Creates a transport on `configuration` (tests use it to install a `URLProtocol`).
+    init(configuration: URLSessionConfiguration, maximumBodyBytes: Int) {
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.httpCookieStorage = nil
@@ -64,7 +68,7 @@ public final class URLSessionTransport: HTTPTransport {
 }
 
 /// Collects each task's response under a size bound and hands redirects back.
-private final class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+final class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     private struct Pending {
         var continuation: CheckedContinuation<HTTPResponse, any Error>
         var response: HTTPURLResponse?
@@ -72,7 +76,7 @@ private final class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecke
         var overflowed = false
     }
 
-    private let maximumBodyBytes: Int
+    let maximumBodyBytes: Int
     private let pending = Locked<[Int: Pending]>([:])
 
     init(maximumBodyBytes: Int) {

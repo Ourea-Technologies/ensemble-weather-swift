@@ -175,7 +175,19 @@ extension ForecastResponse: Codable {
 }
 
 /// The JSON error body every non-2xx response carries.
-struct ErrorBody: Decodable {
+struct ErrorBody: Codable {
     let error: String
     let message: String?
+}
+
+extension APIResponse where Value == ForecastResponse {
+    /// The answer to `query`; see ``ForecastResponse/probability(for:)``.
+    public func probability(for query: ProbabilityQuery) -> ProbabilityResult? {
+        value.probability(for: query)
+    }
+
+    /// The answer to `query`; see ``ForecastResponse/windowTotal(for:)``.
+    public func windowTotal(for query: WindowTotalQuery) -> WindowTotal? {
+        value.windowTotal(for: query)
+    }
 }
