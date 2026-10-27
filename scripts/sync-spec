@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Copies the ensemble-weather-spec repository, at the ref named in
+# spec/VERSION, into spec/.
+#
+#   scripts/sync-spec           write spec/ from the pinned ref
+#   scripts/sync-spec --check   exit 1 if spec/ differs from the pinned ref
+#
+# The source is https://github.com/Ourea-Technologies/ensemble-weather-spec,
+# or a local clone named by OUREA_SPEC_SOURCE.
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+ref="$(tr -d '[:space:]' < "$root/spec/VERSION")"
+source_repo="${OUREA_SPEC_SOURCE:-https://github.com/Ourea-Technologies/ensemble-weather-spec}"
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
+if [[ -d "$source_repo/.git" ]]; then
+  git -C "$source_repo" archive --format=tar "$ref" | tar -x -C "$work"
+else
+  git clone --quiet --filter=blob:none --no-checkout "$source_repo" "$work/.clone"
+  git -C "$work/.clone" archive --format=tar "$ref" | tar -x -C "$work"
+  rm -rf "$work/.clone"
+fi
+cp "$root/spec/VERSION" "$work/VERSION"
+
+if [[ "${1:-}" == "--check" ]]; then
+  if diff -r "$work" "$root/spec" > "$work.diff" 2>&1; then
+    echo "spec/ matches ensemble-weather-spec@$ref"
+    rm -f "$work.diff"
+  else
+    cat "$work.diff"
+    rm -f "$work.diff"
+    echo "spec/ differs from ensemble-weather-spec@$ref: run scripts/sync-spec" >&2
+    exit 1
+  fi
+else
+  find "$root/spec" -mindepth 1 -maxdepth 1 ! -name VERSION -exec rm -rf {} +
+  cp -R "$work/." "$root/spec/"
+  echo "spec/ synced to ensemble-weather-spec@$ref"
+fi

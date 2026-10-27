@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# The static security gate (SDK-STANDARD "Security"): no force unwraps
+# (`x!`, `as!`), no `try!` and no implicitly unwrapped optionals in the
+# library and examples. Tests are exempt. Comment lines are ignored.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+status=0
+# Strip line comments and string literals before matching, so `!=`, prefix
+# `!flag` and text like "done!" never trip the gate.
+while IFS= read -r file; do
+  if perl -ne '
+      next if m{^\s*//};
+      s{"(?:[^"\\]|\\.)*"}{""}g;
+      s{//.*$}{};
+      if (/\btry!/ || /\bas!/ || /[\w\)\]]!(?![=])/ || /:\s*[\w\.<>\[\]]+!\s*[,)=\n{]/) {
+        print "$ARGV:$.: $_"; $found = 1;
+      }
+      END { exit($found ? 1 : 0) }
+    ' "$file"; then :; else status=1; fi
+done < <(find Sources examples -name '*.swift' -not -path '*/.build/*' | sort)
+
+if [[ $status -ne 0 ]]; then
+  echo "error: force unwraps, as! and try! are not allowed outside tests" >&2
+else
+  echo "no force unwraps, as! or try! outside tests"
+fi
+exit $status
