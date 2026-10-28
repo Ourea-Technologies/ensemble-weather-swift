@@ -5,8 +5,9 @@ import Foundation
 
 /// A location reference, the same shape wherever a place is named: forecasts, lists, search hits.
 public struct LocationReference: Sendable, Hashable, Codable {
-    /// The location's key: its catalog slug.
-    public var slug: String
+    /// The location's key: its catalog slug; `nil` on a point (coordinate) forecast, which names
+    /// no catalog place.
+    public var slug: String?
     /// The lowercase USPS state code.
     public var state: String
     /// The display name.
@@ -17,15 +18,15 @@ public struct LocationReference: Sendable, Hashable, Codable {
     public var longitude: Double
     /// Elevation in metres, whatever `units` is (0.1 m).
     public var elevationMeters: Double
-    /// The primary location type, snake_case (D-5).
-    public var type: LocationType
+    /// The primary location type; `nil` on a point (coordinate) forecast.
+    public var type: LocationType?
     /// The IANA zone the location's local days and hours are kept in -- the zone `daily` dates, sunrise and sunset are computed in.
     public var timezone: String
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        slug: String, state: String, name: String, latitude: Double, longitude: Double,
-        elevationMeters: Double, type: LocationType, timezone: String
+        slug: String?, state: String, name: String, latitude: Double, longitude: Double,
+        elevationMeters: Double, type: LocationType?, timezone: String
     ) {
         self.slug = slug
         self.state = state
@@ -49,7 +50,7 @@ public struct LocationReference: Sendable, Hashable, Codable {
     }
 }
 
-/// A list, `/nearby` or favorite row: the [`LocationRef`] fields (D-4) plus the county, the catalog blurb and the location's named elevations.
+/// A list, `/nearby` or favorite row: the `LocationRef` fields plus the county, the catalog blurb and the location's named elevations.
 public struct LocationSummary: Sendable, Hashable, Codable {
     /// The location's key: its catalog slug.
     public var slug: String
@@ -63,7 +64,7 @@ public struct LocationSummary: Sendable, Hashable, Codable {
     public var longitude: Double
     /// Elevation in metres, whatever `units` is (0.1 m).
     public var elevationMeters: Double
-    /// The primary location type, snake_case (D-5).
+    /// The primary location type, snake_case.
     public var type: LocationType
     /// The IANA zone the location's local days and hours are kept in -- the zone `daily` dates, sunrise and sunset are computed in.
     public var timezone: String
@@ -173,7 +174,7 @@ public struct NearbyLocation: Sendable, Hashable, Codable {
     public var longitude: Double
     /// Elevation in metres, whatever `units` is (0.1 m).
     public var elevationMeters: Double
-    /// The primary location type, snake_case (D-5).
+    /// The primary location type, snake_case.
     public var type: LocationType
     /// The IANA zone the location's local days and hours are kept in -- the zone `daily` dates, sunrise and sunset are computed in.
     public var timezone: String
@@ -286,7 +287,7 @@ public struct NearbyPointLocations: Sendable, Hashable, Codable {
     }
 }
 
-/// One location search result: the [`LocationRef`] fields (D-4), the county and `key`.
+/// One location search result: the `LocationRef` fields, the county and `key`.
 public struct SearchHit: Sendable, Hashable, Codable {
     /// State-qualified identity `"<state>-<slug>"` (lowercase state).
     public var key: String
@@ -302,7 +303,7 @@ public struct SearchHit: Sendable, Hashable, Codable {
     public var longitude: Double
     /// Elevation in metres, whatever `units` is (0.1 m).
     public var elevationMeters: Double
-    /// The primary location type, snake_case (D-5).
+    /// The primary location type, snake_case.
     public var type: LocationType
     /// The IANA zone the location's local days and hours are kept in -- the zone `daily` dates, sunrise and sunset are computed in.
     public var timezone: String
@@ -356,5 +357,33 @@ public struct LocationSearchResults: Sendable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case items
         case count
+    }
+}
+
+/// On a `PRO_REQUIRED` refusal of a coordinate request: the nearest named location whose
+/// forecast answers without a key (within 10 km of the point and 300 m of its elevation).
+public struct NearestLocation: Sendable, Hashable, Codable {
+    /// The location's slug.
+    public var slug: String
+    /// The location route's path on this API, with the refused route's suffix (`/current`, `/alerts`).
+    public var url: String
+    /// The distance from the point, kilometres.
+    public var distanceKilometers: Double
+    /// The location's elevation, metres.
+    public var elevationMeters: Double
+
+    /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
+    public init(slug: String, url: String, distanceKilometers: Double, elevationMeters: Double) {
+        self.slug = slug
+        self.url = url
+        self.distanceKilometers = distanceKilometers
+        self.elevationMeters = elevationMeters
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case slug
+        case url
+        case distanceKilometers = "distance_km"
+        case elevationMeters = "elevation_m"
     }
 }

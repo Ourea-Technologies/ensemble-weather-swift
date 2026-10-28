@@ -45,8 +45,6 @@ struct SpecDriftTests {
         "listCatalogStations": { _ = try await $0.catalogStationPage() },
         "getCatalogStation": { _ = try await $0.catalogStation(slug: "mt-hood-test-site-snotel") },
         "getAvailableRuns": { _ = try await $0.availableRuns() },
-        "getStormReports": { _ = try await $0.stormReports() },
-        "getStormReport": { _ = try await $0.stormReport(id: 102) },
         "getAttribution": { _ = try await $0.attribution() },
     ]
 
@@ -61,7 +59,7 @@ struct SpecDriftTests {
 
     @Test("The spec parses and has operations")
     func specLoads() {
-        #expect(Self.operations.count >= 20)
+        #expect(Self.operations.count >= 18)
     }
 
     @Test("Every operation in the spec is exposed and reaches its route")
@@ -93,14 +91,7 @@ struct SpecDriftTests {
     }
 
     /// Response examples the spec itself gets wrong; reported upstream.
-    static let knownBadExamples: [String: String] = [
-        "getLocationForecast 200 dailyOnly":
-            "abridged: location has `elevation` (not `elevation_m`) and no slug/state/timezone; daily rows lack required fields; `condition` holds display text",
-        "getLocationForecast 200 plumes":
-            "abridged: location has `elevation` and type `skiArea` (camelCase); hours lack `ensemble`; no `attribution`",
-        "getPointForecast 200 point":
-            "abridged: location has `elevation` and type `cityTown`; no model_run, forecast or attribution",
-    ]
+    static let knownBadExamples: [String: String] = [:]
 
     @Test("The models round-trip every response example")
     func responseExamples() throws {
@@ -200,6 +191,6 @@ struct VectorBodyTests {
         let forecast = try JSONCoding.decoder().decode(
             ForecastResponse.self, from: try vectorBody("forecast-unknown-fields.json"))
         #expect(forecast.location.type == .unknown("a_location_type_added_later"))
-        #expect(forecast.location.type.rawValue == "a_location_type_added_later")
+        #expect(forecast.location.type?.rawValue == "a_location_type_added_later")
     }
 }

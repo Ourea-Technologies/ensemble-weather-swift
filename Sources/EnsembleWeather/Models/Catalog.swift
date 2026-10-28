@@ -180,8 +180,6 @@ public struct CatalogLocationDetail: Sendable, Hashable, Codable {
     public var template: CatalogTemplateSummary?
     /// Content.
     public var content: [CatalogResolvedEntry]?
-    /// Ads.
-    public var ads: [CatalogResolvedAdSlot]?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
@@ -193,7 +191,7 @@ public struct CatalogLocationDetail: Sendable, Hashable, Codable {
         tags: [String]? = nil, externalLinks: JSONValue? = nil, isFeatured: Bool? = nil,
         elevations: [CatalogElevation], photos: [CatalogPhoto], webcams: [CatalogWebcam],
         nearbyStations: [CatalogNearbyStation], template: CatalogTemplateSummary? = nil,
-        content: [CatalogResolvedEntry]? = nil, ads: [CatalogResolvedAdSlot]? = nil
+        content: [CatalogResolvedEntry]? = nil
     ) {
         self.slug = slug
         self.state = state
@@ -222,7 +220,6 @@ public struct CatalogLocationDetail: Sendable, Hashable, Codable {
         self.nearbyStations = nearbyStations
         self.template = template
         self.content = content
-        self.ads = ads
     }
 
     enum CodingKeys: String, CodingKey {
@@ -253,7 +250,6 @@ public struct CatalogLocationDetail: Sendable, Hashable, Codable {
         case nearbyStations = "nearby_stations"
         case template
         case content
-        case ads
     }
 }
 
@@ -300,7 +296,7 @@ public struct CatalogStation: Sendable, Hashable, Codable {
     public var country: String?
     /// Aliases.
     public var aliases: [String]?
-    /// Network.
+    /// The observation network, snake_case (`snotel`, `rwis_wsdot`, `mt_mesonet`).
     public var network: String?
     /// Source station id.
     public var sourceStationID: String?
@@ -310,7 +306,7 @@ public struct CatalogStation: Sendable, Hashable, Codable {
     public var sensorHeightAGLMeters: Double?
     /// Sensor capabilities.
     public var sensorCapabilities: [String]?
-    /// Station status.
+    /// The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
     public var stationStatus: String?
     /// Last report at.
     public var lastReportAt: Date?
@@ -443,7 +439,7 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
     public var country: String?
     /// Aliases.
     public var aliases: [String]?
-    /// Network.
+    /// The observation network, snake_case (`snotel`, `rwis_wsdot`, `mt_mesonet`).
     public var network: String?
     /// Source station id.
     public var sourceStationID: String?
@@ -453,7 +449,7 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
     public var sensorHeightAGLMeters: Double?
     /// Sensor capabilities.
     public var sensorCapabilities: [String]?
-    /// Station status.
+    /// The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
     public var stationStatus: String?
     /// Last report at.
     public var lastReportAt: Date?
@@ -491,8 +487,6 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
     public var template: CatalogTemplateSummary?
     /// Content.
     public var content: [CatalogResolvedEntry]?
-    /// Ads.
-    public var ads: [CatalogResolvedAdSlot]?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
@@ -508,8 +502,7 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
         descriptionLong: String? = nil, metaTitle: String? = nil, metaDescription: String? = nil,
         tags: [String]? = nil, isFeatured: Bool? = nil, photos: [CatalogPhoto],
         webcams: [CatalogWebcam], primaryLocation: CatalogPrimaryLocation? = nil,
-        template: CatalogTemplateSummary? = nil, content: [CatalogResolvedEntry]? = nil,
-        ads: [CatalogResolvedAdSlot]? = nil
+        template: CatalogTemplateSummary? = nil, content: [CatalogResolvedEntry]? = nil
     ) {
         self.slug = slug
         self.state = state
@@ -546,7 +539,6 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
         self.primaryLocation = primaryLocation
         self.template = template
         self.content = content
-        self.ads = ads
     }
 
     enum CodingKeys: String, CodingKey {
@@ -585,7 +577,6 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
         case primaryLocation = "primary_location"
         case template
         case content
-        case ads
     }
 }
 
@@ -739,9 +730,9 @@ public struct CatalogNearbyStation: Sendable, Hashable, Codable {
     public var slug: String
     /// Name.
     public var name: String
-    /// Network.
+    /// The observation network, snake_case (`snotel`, `rwis_wsdot`, `mt_mesonet`).
     public var network: String
-    /// Station status.
+    /// The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
     public var stationStatus: String
     /// Distance km.
     public var distanceKilometers: Double?
@@ -795,40 +786,6 @@ public struct CatalogTemplateSection: Sendable, Hashable, Codable {
         case kind
         case key
         case config
-    }
-}
-
-/// Closed key set — unknown keys are a `400`.
-public struct CatalogAdCreative: Sendable, Hashable, Codable {
-    /// Headline.
-    public var headline: String?
-    /// Body.
-    public var body: String?
-    /// Call-to-action label.
-    public var callToAction: String?
-    /// Must be http(s).
-    public var clickURL: URL?
-    /// Must reference an existing photo row.
-    public var photoID: String?
-
-    /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(
-        headline: String? = nil, body: String? = nil, callToAction: String? = nil,
-        clickURL: URL? = nil, photoID: String? = nil
-    ) {
-        self.headline = headline
-        self.body = body
-        self.callToAction = callToAction
-        self.clickURL = clickURL
-        self.photoID = photoID
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case headline
-        case body
-        case callToAction = "cta"
-        case clickURL = "click_url"
-        case photoID = "photo_id"
     }
 }
 
@@ -905,85 +862,5 @@ public struct CatalogResolvedEntry: Sendable, Hashable, Codable {
         case displayOrder = "display_order"
         case resolvedLocale = "resolved_locale"
         case updatedAt = "updated_at"
-    }
-}
-
-/// A resolved house placement (campaign + creative content).
-public struct CatalogHousePlacement: Sendable, Hashable, Codable {
-    /// Campaign id.
-    public var campaignID: String
-    /// Creative id.
-    public var creativeID: String
-    /// Content.
-    public var content: CatalogAdCreative
-
-    /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(campaignID: String, creativeID: String, content: CatalogAdCreative) {
-        self.campaignID = campaignID
-        self.creativeID = creativeID
-        self.content = content
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case campaignID = "campaign_id"
-        case creativeID = "creative_id"
-        case content
-    }
-}
-
-/// A resolved third-party placement (network config served verbatim).
-public struct CatalogThirdPartyPlacement: Sendable, Hashable, Codable {
-    /// Unit id.
-    public var unitID: String
-    /// Provider.
-    public var provider: CatalogAdProvider
-    /// Config.
-    public var config: JSONValue
-
-    /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(unitID: String, provider: CatalogAdProvider, config: JSONValue) {
-        self.unitID = unitID
-        self.provider = provider
-        self.config = config
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case unitID = "unit_id"
-        case provider
-        case config
-    }
-}
-
-/// One filled ad slot as the public API serves it.
-public struct CatalogResolvedAdSlot: Sendable, Hashable, Codable {
-    /// Slot key.
-    public var slotKey: String
-    /// Kind.
-    public var kind: CatalogAdSlotKind
-    /// Present iff `kind = house`.
-    public var house: CatalogHousePlacement?
-    /// Present iff `kind = third_party`.
-    public var thirdParty: CatalogThirdPartyPlacement?
-    /// The slot's client rendering hints (`default_sizes`).
-    public var sizes: [[Int]]
-
-    /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(
-        slotKey: String, kind: CatalogAdSlotKind, house: CatalogHousePlacement? = nil,
-        thirdParty: CatalogThirdPartyPlacement? = nil, sizes: [[Int]]
-    ) {
-        self.slotKey = slotKey
-        self.kind = kind
-        self.house = house
-        self.thirdParty = thirdParty
-        self.sizes = sizes
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case slotKey = "slot_key"
-        case kind
-        case house
-        case thirdParty = "third_party"
-        case sizes
     }
 }

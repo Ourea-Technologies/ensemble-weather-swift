@@ -37,6 +37,63 @@ struct ClientTests {
             (1...6).map { executor.retryDelay(for: failure, retry: $0) } == [0.5, 1, 2, 4, 8, 8])
     }
 
+    @Test("A 504 with Retry-After waits exactly that long before retrying")
+    func gatewayTimeoutRetryAfter() async throws {
+        let clock = FakeClock()
+        let transport = MockTransport([
+            jsonResponse(
+                504, body: Data(#"{"error":"TIMEOUT","message":"Timed out."}"#.utf8),
+                headers: ["Retry-After": "5"]),
+            jsonResponse(200, body: try vectorBody("attribution.json")),
+        ])
+        let client = EnsembleWeatherClient(
+            configuration: testConfiguration(transport: transport, clock: clock))
+        _ = try await client.attribution()
+        #expect(transport.requests.count == 2)
+        #expect(clock.sleeps == [5])
+    }
+
+    @Test("An error body's request_id, doc_url, param and nearest_location are kept")
+    func errorBodyFields() async {
+        let body = #"""
+            {"error":"PRO_REQUIRED","message":"Coordinates need a Pro key.","param":"lat",
+             "request_id":"01JBQ6ZK3V8M4T2N7XQH5R9W0C",
+             "doc_url":"https://docs.oureawx.com/features/errors/#pro_required",
+             "nearest_location":{"slug":"mt-hood-meadows",
+                                 "url":"/api/v1/locations/or/mt-hood-meadows",
+                                 "distance_km":4.25,"elevation_m":1635.6}}
+            """#
+        let transport = MockTransport([
+            jsonResponse(403, body: Data(body.utf8), headers: ["X-Request-Id": "header-id"])
+        ])
+        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        do {
+            _ = try await client.forecast(latitude: 45.3, longitude: -121.7)
+            Issue.record("expected an error")
+        } catch let error as EnsembleWeatherError {
+            #expect(error.category == .permission)
+            #expect(error.code == .proRequired)
+            #expect(error.requestID == "01JBQ6ZK3V8M4T2N7XQH5R9W0C")
+            #expect(
+                error.docURL?.absoluteString
+                    == "https://docs.oureawx.com/features/errors/#pro_required")
+            #expect(error.parameter == "lat")
+            #expect(error.nearestLocation?.slug == "mt-hood-meadows")
+            #expect(error.nearestLocation?.url == "/api/v1/locations/or/mt-hood-meadows")
+        } catch {
+            Issue.record("unexpected \(error)")
+        }
+    }
+
+    @Test("Withdrawn error codes keep their string and map by status")
+    func withdrawnCodes() {
+        for code in ["FORBIDDEN", "GONE", "MODEL_RUN_NOT_FOUND", "AMBIGUOUS", "INVALID_MAX_HOURS"] {
+            #expect(EnsembleWeatherError.category(forCode: ErrorCode(rawValue: code)) == nil)
+        }
+        #expect(EnsembleWeatherError.category(forCode: .authUnavailable) == .unavailable)
+        #expect(EnsembleWeatherError.category(forCode: .outsideCoverage) == .outsideCoverage)
+    }
+
     @Test("A cancelled task stops without retrying")
     func cancellation() async {
         let transport = MockTransport(results: [.failure(CancellationError())])
@@ -146,7 +203,8 @@ struct ClientTests {
         let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
         var options = ForecastOptions()
         options.elevations = .named(["summit", "base"])
-        options.diagnostics = [.ptype, .provenance]
+        options.diagnostics = [.provenance]
+        options.extraVariables = [.skinTemperature, .meanSeaLevelPressure]
         options.feelsLike = [.nws]
         options.run = Date(timeIntervalSince1970: 1_794_700_800)
         options.windowTotals = [
@@ -158,8 +216,8 @@ struct ClientTests {
         }
         #expect(
             query
-                == "diagnostics=provenance,ptype&elevations=summit,base&run=2026-11-15T00%3A00%3A00Z"
-                + "&totals=precipitation:24-48h,snowfall:72h")
+                == "diagnostics=provenance&elevations=base,summit&include=mslp,skin_temperature"
+                + "&run=2026-11-15T00%3A00%3A00Z&totals=precipitation:24-48h,snowfall:72h")
     }
 
     @Test("A key from the environment is used when none is passed; an explicit key wins")

@@ -91,18 +91,19 @@ public struct ForecastResponse: Sendable, Hashable {
         self.attribution = attribution
     }
 
-    /// The answer to `query`, matched on its variable, comparison, threshold
-    /// (converted to ``units`` and rounded as the server rounds), window and
-    /// aggregation; `nil` when the response does not carry it.
+    /// The answer to `query`, matched by its canonical term (the threshold
+    /// converted to ``units`` and rounded as the server rounds); `nil` when the
+    /// response does not carry it.
     public func probability(for query: ProbabilityQuery) -> ProbabilityResult? {
         guard let key = try? ResolvedProbabilityTerm(query, units: units) else { return nil }
-        return probabilities.first { ResolvedProbabilityTerm($0, units: units) == key }
+        return probabilities.first { $0.term == key.wireValue }
     }
 
-    /// The answer to `query`; `nil` when the response does not carry it.
+    /// The answer to `query`, matched by its canonical term; `nil` when the
+    /// response does not carry it.
     public func windowTotal(for query: WindowTotalQuery) -> WindowTotal? {
         guard let key = try? ResolvedWindowTotal(query) else { return nil }
-        return windowTotals.first { ResolvedWindowTotal($0) == key }
+        return windowTotals.first { $0.term == key.wireValue }
     }
 }
 
@@ -181,6 +182,21 @@ extension ForecastResponse: Codable {
 struct ErrorBody: Codable {
     let error: String
     let message: String?
+    let requestID: String?
+    let parameter: String?
+    let nearestLocation: NearestLocation?
+    let docURL: String?
+    let attemptsRemaining: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case error
+        case message
+        case requestID = "request_id"
+        case parameter = "param"
+        case nearestLocation = "nearest_location"
+        case docURL = "doc_url"
+        case attemptsRemaining = "attempts_remaining"
+    }
 }
 
 extension APIResponse where Value == ForecastResponse {

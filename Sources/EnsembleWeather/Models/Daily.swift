@@ -13,7 +13,7 @@ public struct DailyForecast: Sendable, Hashable, Codable {
     public var conditionText: String
     /// Machine-readable icon hint for frontends.
     public var conditionIcon: ConditionIcon
-    /// The day's precipitation type, `null` when `precip_occurrence_probability` is under 0.15.
+    /// The day's precipitation type, `nil` when `precipitation_occurrence_probability` is under 0.15.
     public var precipitationType: PrecipitationType?
     /// Calendar-day maximum: the max over local midnight to midnight on `date` (earlier releases: 06:00-18:00 only).
     public var high: Quantiles
@@ -23,11 +23,7 @@ public struct DailyForecast: Sendable, Hashable, Codable {
     public var feelsLikeHigh: Quantiles?
     /// Calendar-day minimum of the hourly `feels_like` (the NWS apparent temperature), per member.
     public var feelsLikeLow: Quantiles?
-    /// The daily UTCI maximum, built like `feels_like_high` from the hourly `feels_like_utci`.
-    public var feelsLikeUTCIHigh: Quantiles?
-    /// The daily UTCI minimum, built like `feels_like_low` from the hourly `feels_like_utci`.
-    public var feelsLikeUTCILow: Quantiles?
-    /// Total precip.
+    /// The day's total precipitation.
     public var totalPrecipitation: Quantiles
     /// Total snowfall.
     public var totalSnowfall: Quantiles?
@@ -41,11 +37,11 @@ public struct DailyForecast: Sendable, Hashable, Codable {
     public var snowLevelMean: Double?
     /// The day's snow level -- each rank the mean of the day's hourly ranks (the day-mean's distribution under the rank coherence the day totals assume).
     public var snowLevel: Quantiles?
-    /// The day total GIVEN a wet day (total >= the `daily_precip_occurrence_probability` threshold, 1.0 mm): the upper part of the day-total distribution, renormalized.
+    /// The day total GIVEN a wet day (total >= the `daily_precipitation_occurrence_probability` threshold, 1.0 mm): the upper part of the day-total distribution, renormalized.
     public var totalPrecipitationIfWet: Quantiles?
-    /// The day's snowfall given a snowy day (>= the `daily_snow_probability` threshold, 2.5 mm), as `total_precip_if_wet`.
+    /// The day's snowfall given a snowy day (>= the `daily_snow_probability` threshold, 2.5 mm), as `total_precipitation_if_wet`.
     public var totalSnowfallIfWet: Quantiles?
-    /// Precip display.
+    /// How to display the day's precipitation.
     public var precipitationDisplay: PrecipDisplay
     /// Average cloud cover for the day (0-100%).
     public var cloudCoverMean: Double?
@@ -65,7 +61,6 @@ public struct DailyForecast: Sendable, Hashable, Codable {
         date: String, condition: WeatherCondition, conditionText: String,
         conditionIcon: ConditionIcon, precipitationType: PrecipitationType? = nil, high: Quantiles,
         low: Quantiles, feelsLikeHigh: Quantiles? = nil, feelsLikeLow: Quantiles? = nil,
-        feelsLikeUTCIHigh: Quantiles? = nil, feelsLikeUTCILow: Quantiles? = nil,
         totalPrecipitation: Quantiles, totalSnowfall: Quantiles? = nil,
         precipitationProbability: Double, precipitationOccurrenceProbability: Double,
         snowProbability: Double, snowLevelMean: Double? = nil, snowLevel: Quantiles? = nil,
@@ -83,8 +78,6 @@ public struct DailyForecast: Sendable, Hashable, Codable {
         self.low = low
         self.feelsLikeHigh = feelsLikeHigh
         self.feelsLikeLow = feelsLikeLow
-        self.feelsLikeUTCIHigh = feelsLikeUTCIHigh
-        self.feelsLikeUTCILow = feelsLikeUTCILow
         self.totalPrecipitation = totalPrecipitation
         self.totalSnowfall = totalSnowfall
         self.precipitationProbability = precipitationProbability
@@ -108,23 +101,21 @@ public struct DailyForecast: Sendable, Hashable, Codable {
         case condition
         case conditionText = "condition_text"
         case conditionIcon = "condition_icon"
-        case precipitationType = "precip_type"
+        case precipitationType = "precipitation_type"
         case high
         case low
         case feelsLikeHigh = "feels_like_high"
         case feelsLikeLow = "feels_like_low"
-        case feelsLikeUTCIHigh = "feels_like_utci_high"
-        case feelsLikeUTCILow = "feels_like_utci_low"
-        case totalPrecipitation = "total_precip"
+        case totalPrecipitation = "total_precipitation"
         case totalSnowfall = "total_snowfall"
-        case precipitationProbability = "precip_probability"
-        case precipitationOccurrenceProbability = "precip_occurrence_probability"
+        case precipitationProbability = "precipitation_probability"
+        case precipitationOccurrenceProbability = "precipitation_occurrence_probability"
         case snowProbability = "snow_probability"
         case snowLevelMean = "snow_level_mean"
         case snowLevel = "snow_level"
-        case totalPrecipitationIfWet = "total_precip_if_wet"
+        case totalPrecipitationIfWet = "total_precipitation_if_wet"
         case totalSnowfallIfWet = "total_snowfall_if_wet"
-        case precipitationDisplay = "precip_display"
+        case precipitationDisplay = "precipitation_display"
         case cloudCoverMean = "cloud_cover_mean"
         case wind
         case stormOrientation = "storm_orientation"
@@ -250,14 +241,10 @@ public struct ElevationForecast: Sendable, Hashable, Codable {
     public var name: String
     /// Elevation.
     public var elevation: Double
-    /// Whether this is the default elevation to show in the UI.
-    public var isDefault: Bool?
     /// Where this elevation was forecast — its own coordinates when the catalog has them, else the location's.
     public var latitude: Double
     /// Lon.
     public var longitude: Double
-    /// LEGACY compact hourly points, derived from `hourly` (kept for clients that read only these; new clients should read `hourly`).
-    public var timeseries: [ElevationHour]?
     /// The full hourly series at this elevation — the same shape and the same code as `forecast.timeseries` (never with `model_means`).
     public var hourly: [TimeSeriesPoint]?
     /// Daily summaries at this elevation — the same daily build as `forecast.daily` (omitted when empty).
@@ -267,16 +254,14 @@ public struct ElevationForecast: Sendable, Hashable, Codable {
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        name: String, elevation: Double, isDefault: Bool? = nil, latitude: Double,
-        longitude: Double, timeseries: [ElevationHour]? = nil, hourly: [TimeSeriesPoint]? = nil,
+        name: String, elevation: Double, latitude: Double, longitude: Double,
+        hourly: [TimeSeriesPoint]? = nil,
         daily: [DailyForecast]? = nil, snowOutlook: SnowOutlook? = nil
     ) {
         self.name = name
         self.elevation = elevation
-        self.isDefault = isDefault
         self.latitude = latitude
         self.longitude = longitude
-        self.timeseries = timeseries
         self.hourly = hourly
         self.daily = daily
         self.snowOutlook = snowOutlook
@@ -285,67 +270,10 @@ public struct ElevationForecast: Sendable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case name
         case elevation
-        case isDefault = "default"
         case latitude = "lat"
         case longitude = "lon"
-        case timeseries
         case hourly
         case daily
         case snowOutlook = "snow_outlook"
-    }
-}
-
-/// LEGACY compact hourly points, derived from `hourly` (kept for clients that read only these; new clients should read `hourly`).
-public struct ElevationHour: Sendable, Hashable, Codable {
-    /// Valid time.
-    public var validTime: Date
-    /// Lead time hours.
-    public var leadTimeHours: Int
-    /// Temperature.
-    public var temperature: Quantiles
-    /// Elevation minus snow level (positive = above the snow level = snow expected; negative = below it = rain).
-    public var snowLevelDelta: Quantiles?
-    /// The variant's served wind speed (`hourly[].ensemble.wind_speed`).
-    public var windSpeed: Quantiles?
-    /// The variant's served gust (`hourly[].ensemble.wind_gust`); absent at lead 0, as on the primary.
-    public var windGust: Quantiles?
-    /// The variant's served hourly precipitation (`hourly[].ensemble.precipitation`), the same shape as the primary's, including the occurrence `probability`.
-    public var precipitation: Quantiles
-    /// The machine code, as `TimeSeriesPoint.condition`.
-    public var condition: String
-    /// The variant's served condition (`hourly[].condition`), derived as for the primary's hour (see `TimeSeriesPoint.condition`).
-    public var conditionText: String
-    /// The variant's served icon hint (`hourly[].condition_icon`; see `TimeSeriesPoint.condition_icon`).
-    public var conditionIcon: String
-
-    /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(
-        validTime: Date, leadTimeHours: Int, temperature: Quantiles,
-        snowLevelDelta: Quantiles? = nil, windSpeed: Quantiles? = nil, windGust: Quantiles? = nil,
-        precipitation: Quantiles, condition: String, conditionText: String, conditionIcon: String
-    ) {
-        self.validTime = validTime
-        self.leadTimeHours = leadTimeHours
-        self.temperature = temperature
-        self.snowLevelDelta = snowLevelDelta
-        self.windSpeed = windSpeed
-        self.windGust = windGust
-        self.precipitation = precipitation
-        self.condition = condition
-        self.conditionText = conditionText
-        self.conditionIcon = conditionIcon
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case validTime = "valid_time"
-        case leadTimeHours = "lead_time_hours"
-        case temperature
-        case snowLevelDelta = "snow_level_delta"
-        case windSpeed = "wind_speed"
-        case windGust = "wind_gust"
-        case precipitation
-        case condition
-        case conditionText = "condition_text"
-        case conditionIcon = "condition_icon"
     }
 }

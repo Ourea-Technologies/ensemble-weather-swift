@@ -32,20 +32,13 @@ struct QueryString: Sendable {
         items.append((name, PercentEncoding.encode(DecimalFormatting.shortest(value))))
     }
 
-    /// Adds a comma-separated list, each element encoded, the commas literal
-    /// (the API's list syntax), unless the list is `nil` or empty.
+    /// Adds a comma-separated list in the API's canonical form: de-duplicated,
+    /// sorted, each element encoded, the commas literal (any other order is a
+    /// 301 from the server), unless the list is `nil` or empty.
     mutating func addList(_ name: String, _ values: [String]?) {
         guard let values, !values.isEmpty else { return }
-        items.append((name, values.map { PercentEncoding.encode($0) }.joined(separator: ",")))
-    }
-
-    /// Adds one parameter per value (the API's `explode` form), unless the
-    /// list is `nil` or empty.
-    mutating func addRepeated(_ name: String, _ values: [String]?) {
-        guard let values else { return }
-        for value in Set(values).sorted() {
-            items.append((name, PercentEncoding.encode(value)))
-        }
+        items.append(
+            (name, Set(values).sorted().map { PercentEncoding.encode($0) }.joined(separator: ",")))
     }
 
     /// Adds a value the caller has already put in canonical wire form, with

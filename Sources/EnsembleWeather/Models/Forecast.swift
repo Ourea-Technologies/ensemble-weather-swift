@@ -9,9 +9,9 @@ public struct ProbabilityThresholds: Sendable, Hashable, Codable {
     public var hourlyPrecipitation: Double
     /// The threshold of `ensemble.snowfall.probability`, 0.254 mm.
     public var hourlySnowfall: Double
-    /// The threshold of `daily[].precip_probability`, a day total of 2.5 mm.
+    /// The threshold of `daily[].precipitation_probability`, a day total of 2.5 mm.
     public var dailyPrecipitationProbability: Double
-    /// The threshold of `daily[].precip_occurrence_probability`, 1.0 mm, also the "if wet" condition.
+    /// The threshold of `daily[].precipitation_occurrence_probability`, 1.0 mm, also the "if wet" condition.
     public var dailyPrecipitationOccurrenceProbability: Double
     /// The threshold of `daily[].snow_probability`, a day snowfall of 2.5 mm.
     public var dailySnowProbability: Double
@@ -31,8 +31,8 @@ public struct ProbabilityThresholds: Sendable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case hourlyPrecipitation = "hourly_precipitation"
         case hourlySnowfall = "hourly_snowfall"
-        case dailyPrecipitationProbability = "daily_precip_probability"
-        case dailyPrecipitationOccurrenceProbability = "daily_precip_occurrence_probability"
+        case dailyPrecipitationProbability = "daily_precipitation_probability"
+        case dailyPrecipitationOccurrenceProbability = "daily_precipitation_occurrence_probability"
         case dailySnowProbability = "daily_snow_probability"
     }
 }

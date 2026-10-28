@@ -88,35 +88,25 @@ public final class EnsembleWeatherClient: Sendable {
         let (terms, totals) = try options.apply(to: &endpoint.query, units: units)
         var response = try await get(ForecastResponse.self, endpoint)
         response.value.probabilities = Self.inCallerOrder(
-            response.value.probabilities, terms: terms, units: response.value.units)
+            response.value.probabilities, terms: terms.map(\.wireValue), term: \.term)
         response.value.windowTotals = Self.inCallerOrder(
-            response.value.windowTotals, totals: totals)
+            response.value.windowTotals, terms: totals.map(\.wireValue), term: \.term)
         return response
     }
 
-    /// Maps the server's answers (in canonical order) back to the caller's terms.
+    /// Maps the server's answers back to the caller's terms by the canonical
+    /// `term` each answer echoes (BEHAVIOR 4, 5), never by position.
     ///
     /// A term the response does not answer is left out (it is absent, never
     /// a substituted value); ``ForecastResponse/probability(for:)`` returns
-    /// `nil` for it.
-    static func inCallerOrder(
-        _ results: [ProbabilityResult], terms: [ResolvedProbabilityTerm], units: UnitSystem
-    ) -> [ProbabilityResult] {
+    /// `nil` for it. A repeated term repeats its answer.
+    static func inCallerOrder<Result>(
+        _ results: [Result], terms: [String], term: (Result) -> String
+    ) -> [Result] {
         guard !terms.isEmpty else { return results }
-        var byKey: [ResolvedProbabilityTerm: ProbabilityResult] = [:]
-        for result in results {
-            if let key = ResolvedProbabilityTerm(result, units: units) { byKey[key] = result }
-        }
-        return terms.compactMap { byKey[$0] }
-    }
-
-    static func inCallerOrder(_ results: [WindowTotal], totals: [ResolvedWindowTotal])
-        -> [WindowTotal]
-    {
-        guard !totals.isEmpty else { return results }
-        var byKey: [ResolvedWindowTotal: WindowTotal] = [:]
-        for result in results { byKey[ResolvedWindowTotal(result)] = result }
-        return totals.compactMap { byKey[$0] }
+        var byTerm: [String: Result] = [:]
+        for result in results { byTerm[term(result)] = result }
+        return terms.compactMap { byTerm[$0] }
     }
 
     // MARK: - Current conditions and alerts
@@ -321,7 +311,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - country: An ISO country code, such as `US`.
     ///   - admin1: A first-level region, such as `US-OR`.
     ///   - type: Restricts to a location type.
-    ///   - template: Restricts to a page template.
+    ///   - template: Restricts to a page-template variant, snake_case, such as `"mountain"`.
     ///   - limit: The page size (1...100); default 20.
     ///   - cursor: The previous page's ``CatalogLocationPage/nextCursor``.
     /// - Returns: The decoded response with its metadata.
@@ -382,9 +372,9 @@ public final class EnsembleWeatherClient: Sendable {
     /// - Parameters:
     ///   - country: An ISO country code.
     ///   - admin1: A first-level region, such as `US-OR`.
-    ///   - networks: Restricts to networks, such as `["Snotel"]`.
-    ///   - capabilities: Requires every listed sensor capability.
-    ///   - status: Restricts to a station status.
+    ///   - networks: Restricts to networks, snake_case, such as `["snotel", "raws"]`.
+    ///   - capabilities: Requires every listed sensor capability, such as `["swe"]`.
+    ///   - status: Restricts to a station status, snake_case, such as `"active"`.
     ///   - limit: The page size (1...100); default 20.
     ///   - cursor: The previous page's ``CatalogStationPage/nextCursor``.
     /// - Returns: The decoded response with its metadata.
@@ -398,7 +388,7 @@ public final class EnsembleWeatherClient: Sendable {
         endpoint.query.add("country", country)
         endpoint.query.add("admin1", admin1)
         endpoint.query.addList("network", networks)
-        endpoint.query.addRepeated("capability", capabilities)
+        endpoint.query.addList("capability", capabilities)
         endpoint.query.add("status", status)
         endpoint.query.add("limit", limit, default: 20)
         endpoint.query.add("cursor", cursor)
@@ -432,35 +422,22 @@ public final class EnsembleWeatherClient: Sendable {
         return try await get(CatalogStationDetail.self, endpoint)
     }
 
-    // MARK: - Runs, storm reports, attribution
+    // MARK: - Runs, attribution
 
-    /// The model runs the API can serve (`getAvailableRuns`).
+    /// One page of the model runs the API can serve, newest first (`getAvailableRuns`).
     ///
-    /// - Parameter limit: The most runs (at most 100); default 10.
+    /// - Parameters:
+    ///   - limit: The page size (1...100); default 10.
+    ///   - cursor: The previous page's ``AvailableRuns/nextCursor``.
     /// - Returns: The decoded response with its metadata.
     /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
-    public func availableRuns(limit: Int = 10) async throws -> APIResponse<AvailableRuns> {
+    public func availableRuns(limit: Int = 10, cursor: String? = nil) async throws
+        -> APIResponse<AvailableRuns>
+    {
         var endpoint = Endpoint(operation: "getAvailableRuns", path: ["api", "v1", "runs"])
         endpoint.query.add("limit", limit, default: 10)
+        endpoint.query.add("cursor", cursor)
         return try await get(AvailableRuns.self, endpoint)
-    }
-
-    /// Recent storm reports (`getStormReports`).
-    ///
-    /// - Parameter limit: The most reports (at most 100); default 20.
-    /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
-    public func stormReports(limit: Int = 20) async throws -> APIResponse<StormReportList> {
-        var endpoint = Endpoint(operation: "getStormReports", path: ["api", "v1", "storm-reports"])
-        endpoint.query.add("limit", limit, default: 20)
-        return try await get(StormReportList.self, endpoint)
-    }
-
-    /// One storm report (`getStormReport`).
-    public func stormReport(id: Int64) async throws -> APIResponse<StormReport> {
-        let endpoint = Endpoint(
-            operation: "getStormReport", path: ["api", "v1", "storm-reports", String(id)])
-        return try await get(StormReport.self, endpoint)
     }
 
     /// Every data provider and source with its credit, licence and notices (`getAttribution`).

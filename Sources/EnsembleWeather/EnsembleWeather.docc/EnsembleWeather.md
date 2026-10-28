@@ -56,7 +56,10 @@ The SDK targets API contract v1. Guides live at
 - ``QuantileInterval``
 - ``ProbabilityResult``
 - ``WindowTotal``
+- ``NullReason``
 - ``EnsembleStats``
+- ``CircularStats``
+- ``Sector``
 
 ### Locations and the catalog
 
@@ -72,6 +75,7 @@ The SDK targets API contract v1. Guides live at
 
 - ``EnsembleWeatherError``
 - ``ErrorCode``
+- ``NearestLocation``
 - ``RateLimit``
 - ``DeprecationNotice``
 - ``DeprecationReporter``

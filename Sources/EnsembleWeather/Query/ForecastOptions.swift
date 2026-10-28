@@ -58,6 +58,9 @@ public struct ForecastOptions: Sendable, Hashable {
     public var diagnostics: Set<ForecastDiagnostic> = []
     /// The feels-like indices to serve; empty is the default (`nws`).
     public var feelsLike: Set<FeelsLikeIndex> = []
+    /// Opt-in variables (`include=`): ``EnsembleStats/skinTemperature`` and
+    /// ``EnsembleStats/meanSeaLevelPressure`` are served only when asked for.
+    public var extraVariables: Set<ForecastExtraVariable> = []
 
     /// Creates options at their defaults.
     public init() {}
@@ -88,16 +91,20 @@ public enum ElevationSelection: Sendable, Hashable {
 public enum ForecastDiagnostic: String, Sendable, Hashable, CaseIterable {
     /// Each hour's provenance tags.
     case provenance
-    /// The model-native precipitation-type code quantiles.
-    case ptype
+}
+
+/// An opt-in forecast variable, served only when asked for.
+public enum ForecastExtraVariable: String, Sendable, Hashable, CaseIterable {
+    /// The skin (ground surface) temperature, ``EnsembleStats/skinTemperature``.
+    case skinTemperature = "skin_temperature"
+    /// The mean sea-level pressure, ``EnsembleStats/meanSeaLevelPressure``.
+    case meanSeaLevelPressure = "mslp"
 }
 
 /// A feels-like index.
 public enum FeelsLikeIndex: String, Sendable, Hashable, CaseIterable {
-    /// The NWS apparent temperature (the default).
+    /// The NWS apparent temperature (the default, and the only index served).
     case nws
-    /// The Universal Thermal Climate Index (not served yet: the server answers 400).
-    case utci
 }
 
 /// Optional extras of a catalog detail.
@@ -106,8 +113,6 @@ public enum CatalogExtra: String, Sendable, Hashable, CaseIterable {
     case content
     /// The page template.
     case template
-    /// Resolved ad slots.
-    case ads
 }
 
 extension ForecastOptions {
@@ -143,6 +148,7 @@ extension ForecastOptions {
         query.addWireValue("prob", ResolvedProbabilityTerm.wireValue(for: terms))
         query.addWireValue("totals", ResolvedWindowTotal.wireValue(for: totals))
         query.addList("diagnostics", diagnostics.map(\.rawValue).sorted())
+        query.addList("include", extraVariables.map(\.rawValue).sorted())
         if feelsLike != [.nws] { query.addList("feels_like", feelsLike.map(\.rawValue).sorted()) }
         return (terms, totals)
     }

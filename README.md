@@ -93,7 +93,7 @@ let freeze = ProbabilityQuery.temperature(atMost: .fahrenheit(32), in: .hours(48
 let forecast = try await client.forecast(
     for: "or/mt-hood-meadows", options: ForecastOptions(probabilities: [freeze]))
 if let answer = forecast.probability(for: freeze) {
-    print(answer.probability as Any, answer.members)   // nil when the forecast doesn't reach 48 h
+    print(answer.probability as Any, answer.members)   // nil, with answer.nullReason, when unanswered
 }
 ```
 
@@ -138,7 +138,10 @@ Every call throws `EnsembleWeatherError` (or `CancellationError`). It carries
 `category` (`.authentication`, `.permission`, `.notFound`, `.invalidRequest`,
 `.outsideCoverage`, `.rateLimited`, `.unavailable`, `.connection`, `.usage`,
 `.invalidResponse`), the API's `code` verbatim, `status`, `message`,
-`requestID` and, for 429/503, `retryAfter`.
+`requestID`, `docURL` (the code's entry on the docs errors page), `parameter`
+(on a 400 about one query parameter), `nearestLocation` (on a `PRO_REQUIRED`
+coordinate request: a named location that answers without a key) and, for
+429/503/504, `retryAfter`.
 
 ```swift
 do {

@@ -6,8 +6,8 @@ import Foundation
 /// The one distribution shape: every ensemble statistic the API serves, in the request's units.
 ///
 /// Every field is optional; a missing field is absent, never 0. Read a range
-/// with ``range(_:)`` and the median with ``median``. For the circular
-/// `wind_direction`, `max` may be numerically less than `min`.
+/// with ``range(_:)`` and the median with ``median``. The wind direction is
+/// not a `Quantiles` but a circular distribution, ``CircularStats``.
 public struct Quantiles: Sendable, Hashable, Codable {
     /// Ensemble mean.
     public var mean: Double?
@@ -60,6 +60,9 @@ public struct Quantiles: Sendable, Hashable, Codable {
 
 /// One `?prob=` term, answered.
 public struct ProbabilityResult: Sendable, Hashable, Codable {
+    /// The term's canonical spelling, as the SDK sent it (`snowfall:ge:6.000:24h`): the key the
+    /// SDK matches the caller's term by.
+    public var term: String
     /// Variable.
     public var variable: ForecastVariable
     /// At least (`ge`) or at most (`le`).
@@ -76,17 +79,22 @@ public struct ProbabilityResult: Sendable, Hashable, Codable {
     public var from: Date?
     /// The window's end (exclusive).
     public var to: Date?
-    /// The share of members meeting the term, 0..1 (0.001); `null` when the served series does not reach the window's end or carries no members (`hourly=false`).
+    /// The share of members meeting the term, 0..1 (0.001); `nil` (never 0) when it cannot be
+    /// answered: ``nullReason`` says why.
     public var probability: Double?
     /// Members that voted: for `total`, the members whose values cover the whole window; for `any`/`all`, those with a value in it.
     public var members: Int
+    /// Why ``probability`` is `nil`; `nil` when it is not.
+    public var nullReason: NullReason?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        variable: ForecastVariable, comparison: ProbabilityComparison, threshold: Double,
-        windowStartHours: Int, windowEndHours: Int, aggregation: ProbabilityAggregation,
-        from: Date? = nil, to: Date? = nil, probability: Double? = nil, members: Int
+        term: String, variable: ForecastVariable, comparison: ProbabilityComparison,
+        threshold: Double, windowStartHours: Int, windowEndHours: Int,
+        aggregation: ProbabilityAggregation, from: Date? = nil, to: Date? = nil,
+        probability: Double? = nil, members: Int, nullReason: NullReason? = nil
     ) {
+        self.term = term
         self.variable = variable
         self.comparison = comparison
         self.threshold = threshold
@@ -97,9 +105,11 @@ public struct ProbabilityResult: Sendable, Hashable, Codable {
         self.to = to
         self.probability = probability
         self.members = members
+        self.nullReason = nullReason
     }
 
     enum CodingKeys: String, CodingKey {
+        case term
         case variable
         case comparison = "op"
         case threshold
@@ -110,11 +120,15 @@ public struct ProbabilityResult: Sendable, Hashable, Codable {
         case to
         case probability
         case members
+        case nullReason = "null_reason"
     }
 }
 
 /// One `?totals=` window, across the members.
 public struct WindowTotal: Sendable, Hashable, Codable {
+    /// The term's canonical spelling, as the SDK sent it (`snowfall:72h`): the key the SDK
+    /// matches the caller's query by.
+    public var term: String
     /// Variable.
     public var variable: ForecastVariable
     /// Window start hours.
@@ -125,37 +139,53 @@ public struct WindowTotal: Sendable, Hashable, Codable {
     public var from: Date?
     /// To.
     public var to: Date?
-    /// The members' window totals, counted as the headline counts its windows (a straddling bucket by its share inside; only members covering the whole window).
+    /// What each member contributes: ``WindowTotalAggregation/total`` for precipitation and snowfall.
+    public var aggregation: WindowTotalAggregation
+    /// The members' window totals, counted as the headline counts its windows (a straddling
+    /// bucket by its share inside; only members covering the whole window); `nil` when the
+    /// window cannot be answered: ``nullReason`` says why.
     public var quantiles: Quantiles?
     /// Members.
     public var members: Int
+    /// Why ``quantiles`` is `nil`; `nil` when it is not.
+    public var nullReason: NullReason?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        variable: ForecastVariable, windowStartHours: Int, windowEndHours: Int, from: Date? = nil,
-        to: Date? = nil, quantiles: Quantiles? = nil, members: Int
+        term: String, variable: ForecastVariable, windowStartHours: Int, windowEndHours: Int,
+        from: Date? = nil, to: Date? = nil, aggregation: WindowTotalAggregation = .total,
+        quantiles: Quantiles? = nil, members: Int, nullReason: NullReason? = nil
     ) {
+        self.term = term
         self.variable = variable
         self.windowStartHours = windowStartHours
         self.windowEndHours = windowEndHours
         self.from = from
         self.to = to
+        self.aggregation = aggregation
         self.quantiles = quantiles
         self.members = members
+        self.nullReason = nullReason
     }
 
     enum CodingKeys: String, CodingKey {
+        case term
         case variable
         case windowStartHours = "window_start_hours"
         case windowEndHours = "window_end_hours"
         case from
         case to
+        case aggregation
         case quantiles
         case members
+        case nullReason = "null_reason"
     }
 }
 
 /// A clockwise arc on the compass, degrees.
+///
+/// `to` may be numerically less than `from` when the arc crosses north: the width is
+/// `(to - from) mod 360`. The SDK does not "fix" it.
 public struct Sector: Sendable, Hashable, Codable {
     /// From.
     public var from: Double
@@ -178,7 +208,8 @@ public struct Sector: Sendable, Hashable, Codable {
 public struct CircularStats: Sendable, Hashable, Codable {
     /// The resultant-vector mean direction, degrees clockwise from north, in [0, 360).
     public var mean: Double
-    /// Standard deviation of the members' signed angular offsets from `mean`, degrees.
+    /// Standard deviation of the members' signed angular offsets from `mean`, degrees; `nil` on a
+    /// single-member hour.
     public var standardDeviation: Double?
     /// The central 50 % of the members — the clockwise arc from the 25th to the 75th circular percentile.
     public var sector50: Sector

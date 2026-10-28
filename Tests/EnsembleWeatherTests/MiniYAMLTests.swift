@@ -49,7 +49,7 @@ struct MiniYAMLTests {
             encoding: .utf8)
         let spec = try MiniYAML.parse(text)
         #expect(spec["openapi"] == .string("3.1.0"))
-        #expect((spec["paths"]?.object?.count ?? 0) >= 20)
+        #expect((spec["paths"]?.object?.count ?? 0) >= 18)
         if let path = ProcessInfo.processInfo.environment["OUREA_DUMP_SPEC_JSON"] {
             try JSONCoding.encoder().encode(spec).write(to: URL(fileURLWithPath: path))
         }

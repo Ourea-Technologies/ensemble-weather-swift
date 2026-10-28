@@ -502,6 +502,14 @@ public enum ConditionIcon: Sendable, Hashable {
     case nightSnow
     /// `night_freezing_rain`.
     case nightFreezingRain
+    /// `night_moon_showers`.
+    case nightMoonShowers
+    /// `night_chance_rain`.
+    case nightChanceRain
+    /// `night_rain_likely`.
+    case nightRainLikely
+    /// `night_showers`.
+    case nightShowers
     /// A value this SDK version does not know, with its raw string.
     case unknown(String)
 }
@@ -544,6 +552,10 @@ extension ConditionIcon: RawRepresentable, Codable {
         case "night_rain_snow_mix": self = .nightRainSnowMix
         case "night_snow": self = .nightSnow
         case "night_freezing_rain": self = .nightFreezingRain
+        case "night_moon_showers": self = .nightMoonShowers
+        case "night_chance_rain": self = .nightChanceRain
+        case "night_rain_likely": self = .nightRainLikely
+        case "night_showers": self = .nightShowers
         default: self = .unknown(rawValue)
         }
     }
@@ -585,6 +597,10 @@ extension ConditionIcon: RawRepresentable, Codable {
         case .nightRainSnowMix: "night_rain_snow_mix"
         case .nightSnow: "night_snow"
         case .nightFreezingRain: "night_freezing_rain"
+        case .nightMoonShowers: "night_moon_showers"
+        case .nightChanceRain: "night_chance_rain"
+        case .nightRainLikely: "night_rain_likely"
+        case .nightShowers: "night_showers"
         case .unknown(let raw): raw
         }
     }
@@ -1266,25 +1282,28 @@ extension CatalogTemplateSectionKind: RawRepresentable, Codable {
     }
 }
 
-/// The kind of an ad slot placement.
+/// Why a probability or a window total is `nil`.
 ///
 /// A value this SDK version does not know yet decodes to ``unknown(_:)``, keeping
 /// the raw string, so a newer server never breaks decoding.
-public enum CatalogAdSlotKind: Sendable, Hashable {
-    /// `house`.
-    case house
-    /// `third_party`.
-    case thirdParty
+public enum NullReason: Sendable, Hashable {
+    /// `window_not_covered`: the served series does not reach the window's end (ask a larger `maxHours`).
+    case windowNotCovered
+    /// `too_few_members`: fewer than two members cover the whole window.
+    case tooFewMembers
+    /// `variable_unavailable`: no member carries the variable through the window (for example with `includesHourly = false`).
+    case variableUnavailable
     /// A value this SDK version does not know, with its raw string.
     case unknown(String)
 }
 
-extension CatalogAdSlotKind: RawRepresentable, Codable {
+extension NullReason: RawRepresentable, Codable {
     /// Creates a value from its wire string; an unrecognised string is ``unknown(_:)``.
     public init(rawValue: String) {
         switch rawValue {
-        case "house": self = .house
-        case "third_party": self = .thirdParty
+        case "window_not_covered": self = .windowNotCovered
+        case "too_few_members": self = .tooFewMembers
+        case "variable_unavailable": self = .variableUnavailable
         default: self = .unknown(rawValue)
         }
     }
@@ -1292,35 +1311,36 @@ extension CatalogAdSlotKind: RawRepresentable, Codable {
     /// The wire string.
     public var rawValue: String {
         switch self {
-        case .house: "house"
-        case .thirdParty: "third_party"
+        case .windowNotCovered: "window_not_covered"
+        case .tooFewMembers: "too_few_members"
+        case .variableUnavailable: "variable_unavailable"
         case .unknown(let raw): raw
         }
     }
 }
 
-/// A third-party ad provider.
+/// What each member contributes to a window total.
 ///
 /// A value this SDK version does not know yet decodes to ``unknown(_:)``, keeping
 /// the raw string, so a newer server never breaks decoding.
-public enum CatalogAdProvider: Sendable, Hashable {
-    /// `adsense`.
-    case adsense
-    /// `gam`.
-    case gam
-    /// `custom`.
-    case custom
+public enum WindowTotalAggregation: Sendable, Hashable {
+    /// `total`: its window total of precipitation or snowfall.
+    case total
+    /// `min`: its lowest value over the window's hours.
+    case min
+    /// `max`: its highest value over the window's hours.
+    case max
     /// A value this SDK version does not know, with its raw string.
     case unknown(String)
 }
 
-extension CatalogAdProvider: RawRepresentable, Codable {
+extension WindowTotalAggregation: RawRepresentable, Codable {
     /// Creates a value from its wire string; an unrecognised string is ``unknown(_:)``.
     public init(rawValue: String) {
         switch rawValue {
-        case "adsense": self = .adsense
-        case "gam": self = .gam
-        case "custom": self = .custom
+        case "total": self = .total
+        case "min": self = .min
+        case "max": self = .max
         default: self = .unknown(rawValue)
         }
     }
@@ -1328,9 +1348,9 @@ extension CatalogAdProvider: RawRepresentable, Codable {
     /// The wire string.
     public var rawValue: String {
         switch self {
-        case .adsense: "adsense"
-        case .gam: "gam"
-        case .custom: "custom"
+        case .total: "total"
+        case .min: "min"
+        case .max: "max"
         case .unknown(let raw): raw
         }
     }

@@ -46,9 +46,8 @@ struct CanonicalFormTests {
         query.add("max_hours", 24, default: 24)
         query.add("include_past", true, default: false)
         query.add("cursor", nil as String?)
-        query.addRepeated("capability", ["swe", "air_temp", "swe"])
-        #expect(
-            query.encoded == "capability=air_temp&capability=swe&include_past=true&units=imperial")
+        query.addList("capability", ["swe", "air_temp", "swe"])
+        #expect(query.encoded == "capability=air_temp,swe&include_past=true&units=imperial")
     }
 
     @Test("Unit conversion of thresholds uses the exact factors")

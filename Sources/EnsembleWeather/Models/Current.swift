@@ -5,7 +5,7 @@ import Foundation
 
 /// Current conditions at a location or point: the blended reading, nearby sensors, active alerts and the nowcast band.
 public struct CurrentConditionsResponse: Sendable, Hashable, Codable {
-    /// The one location reference (it was the display name beside flat `lat`, `lon`, `elevation_m` and `timezone`).
+    /// The one location reference (`slug` and `type` are `nil` for a point).
     public var location: LocationReference
     /// Active NWS watches/warnings/advisories for this location (zone- and polygon-matched).
     public var alerts: [ActiveAlert]
@@ -13,7 +13,7 @@ public struct CurrentConditionsResponse: Sendable, Hashable, Codable {
     public var alertsAsOf: Date
     /// Sensor count.
     public var sensorCount: Int
-    /// Each sensor's latest reading set (in the request's `units`, under plain names -- it was the observation table's column names and units, `temperature_c`, `wind_speed_ms`).
+    /// Each sensor's latest reading set, in the request's `units`.
     public var sensors: [SensorObservation]
     /// "Right now" flattened: the `nowcast_hours` hour nearest the request time, read field by field (see the schema).
     public var current: CurrentConditions?
@@ -80,8 +80,8 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
     public var condition: String
     /// The display text for `condition`, as `TimeSeriesPoint.condition_text`.
     public var conditionText: String
-    /// Condition icon.
-    public var conditionIcon: String
+    /// The hour's icon hint, as `TimeSeriesPoint.condition_icon`.
+    public var conditionIcon: ConditionIcon
     /// M/s (metric, kelvin) or mph (imperial).
     public var windSpeed: Double
     /// Same unit as `wind_speed`.
@@ -92,7 +92,7 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
     public var relativeHumidity: Double?
     /// Same unit as `temperature`.
     public var dewpoint: Double?
-    /// Probability (0–1) of at least a 0.1 mm trace in the hour.
+    /// The hour's `ensemble.precipitation.probability` (0–1).
     public var precipitationProbability: Double?
     /// `nowcast` — at least one live observation (surface station, MRMS radar, GOES cloud mask) carried weight at this hour.
     public var source: ConditionsSource
@@ -102,7 +102,8 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         time: Date, temperature: Double, feelsLike: Double? = nil, condition: String,
-        conditionText: String, conditionIcon: String, windSpeed: Double, windGust: Double? = nil,
+        conditionText: String, conditionIcon: ConditionIcon, windSpeed: Double,
+        windGust: Double? = nil,
         windDirection: Double, relativeHumidity: Double? = nil, dewpoint: Double? = nil,
         precipitationProbability: Double? = nil, source: ConditionsSource,
         station: ConditionsStation? = nil
@@ -135,7 +136,7 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
         case windDirection = "wind_direction"
         case relativeHumidity = "relative_humidity"
         case dewpoint
-        case precipitationProbability = "precip_probability"
+        case precipitationProbability = "precipitation_probability"
         case source
         case station
     }
@@ -143,18 +144,22 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
 
 /// The surface station whose reading anchored temperature, dewpoint and wind at this hour.
 public struct ConditionsStation: Sendable, Hashable, Codable {
-    /// Name.
+    /// The station's id in its network, as `nearest_sensors[].station_id`.
+    public var stationID: String
+    /// The station's registry name, else its id.
     public var name: String
     /// Observation time.
     public var observationTime: Date
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(name: String, observationTime: Date) {
+    public init(stationID: String, name: String, observationTime: Date) {
+        self.stationID = stationID
         self.name = name
         self.observationTime = observationTime
     }
 
     enum CodingKeys: String, CodingKey {
+        case stationID = "station_id"
         case name
         case observationTime = "observation_time"
     }
@@ -194,7 +199,7 @@ public struct SensorObservation: Sendable, Hashable, Codable {
     public var pavementTemp: Double?
     /// As `temperature`.
     public var subsurfaceTemp: Double?
-    /// M, or ft (imperial).
+    /// M, or statute miles (imperial).
     public var visibility: Double?
     /// Percent.
     public var cloudCover: Double?
@@ -265,7 +270,7 @@ public struct SensorObservation: Sendable, Hashable, Codable {
         case windDirection = "wind_direction"
         case pressure
         case precipitation
-        case precipitationRate = "precip_rate"
+        case precipitationRate = "precipitation_rate"
         case reflectivity
         case pavementTemp = "pavement_temp"
         case subsurfaceTemp = "subsurface_temp"
@@ -283,7 +288,7 @@ public struct SensorObservation: Sendable, Hashable, Codable {
 
 /// The active weather alerts for a location or point.
 public struct AlertsResponse: Sendable, Hashable, Codable {
-    /// (D-4) -- the one location reference (it was the display name).
+    /// The one location reference.
     public var location: LocationReference
     /// Alert count.
     public var alertCount: Int
@@ -321,10 +326,13 @@ public struct ActiveAlert: Sendable, Hashable, Codable {
     public var id: String
     /// Event.
     public var event: String
-    /// NWS severity (Extreme/Severe/Moderate/Minor/Unknown).
+    /// The NWS severity, snake_case: `extreme`, `severe`, `moderate`, `minor` or `unknown`
+    /// (treat any other value as `unknown`).
     public var severity: String
-    /// Urgency.
+    /// The NWS urgency, snake_case: `immediate`, `expected`, `future`, `past` or `unknown`.
     public var urgency: String
+    /// The NWS certainty, snake_case: `observed`, `likely`, `possible`, `unlikely` or `unknown`.
+    public var certainty: String
     /// Headline.
     public var headline: String
     /// Omitted when NWS supplies none.
@@ -336,13 +344,15 @@ public struct ActiveAlert: Sendable, Hashable, Codable {
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        id: String, event: String, severity: String, urgency: String, headline: String,
+        id: String, event: String, severity: String, urgency: String, certainty: String,
+        headline: String,
         onset: Date? = nil, expires: Date, ends: Date? = nil
     ) {
         self.id = id
         self.event = event
         self.severity = severity
         self.urgency = urgency
+        self.certainty = certainty
         self.headline = headline
         self.onset = onset
         self.expires = expires
@@ -354,6 +364,7 @@ public struct ActiveAlert: Sendable, Hashable, Codable {
         case event
         case severity
         case urgency
+        case certainty
         case headline
         case onset
         case expires

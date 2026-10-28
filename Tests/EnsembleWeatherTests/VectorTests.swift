@@ -160,7 +160,7 @@ private struct VectorRun {
                 let location =
                     args["location"]?.string.map { LocationID($0) }
                     ?? LocationID(
-                        state: args["state"]?.string ?? "", slug: args["name"]?.string ?? "")
+                        state: args["state"]?.string ?? "", slug: args["slug"]?.string ?? "")
                 let response = try await client.forecast(
                     for: location, options: try forecastOptions(args))
                 return try outcome(response) { (forecast: ForecastResponse) in
@@ -205,11 +205,11 @@ private struct VectorRun {
     }
 
     private func outcome<Value: Encodable>(
-        _ response: APIResponse<Value>, unknownEnums: (Value) -> [String: LocationType]
+        _ response: APIResponse<Value>, unknownEnums: (Value) -> [String: LocationType?]
     ) throws -> CallOutcome {
         var unknown: [String: String] = [:]
         for (path, value) in unknownEnums(response.value) {
-            if case .unknown(let raw) = value { unknown[path] = raw }
+            if case .unknown(let raw)? = value { unknown[path] = raw }
         }
         return CallOutcome(
             result: try JSONValue.encoding(response.value), metadata: response.metadata,

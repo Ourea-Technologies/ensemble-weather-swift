@@ -193,21 +193,6 @@ struct ResolvedProbabilityTerm: Hashable, Comparable {
         self.aggregation = aggregation
     }
 
-    /// The key of a server answer, or `nil` when it cannot match any term.
-    init?(_ result: ProbabilityResult, units: UnitSystem) {
-        let decimals = result.variable.decimals(in: units)
-        guard
-            let scaled = DecimalFormatting.roundedScaled(result.threshold, decimals: decimals)
-        else { return nil }
-        self.variable = result.variable
-        self.comparison = result.comparison
-        self.scaledThreshold = scaled
-        self.decimals = decimals
-        self.window = ForecastWindow(
-            startHours: result.windowStartHours, endHours: result.windowEndHours)
-        self.aggregation = result.aggregation
-    }
-
     var wireValue: String {
         var term =
             "\(variable.rawValue):\(comparison.rawValue):"
@@ -293,11 +278,6 @@ struct ResolvedWindowTotal: Hashable, Comparable {
         _ = try query.window.wireValue()
         self.variable = query.variable
         self.window = query.window
-    }
-
-    init(_ total: WindowTotal) {
-        variable = total.variable
-        window = ForecastWindow(startHours: total.windowStartHours, endHours: total.windowEndHours)
     }
 
     var wireValue: String {

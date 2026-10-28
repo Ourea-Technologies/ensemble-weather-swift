@@ -36,11 +36,11 @@ def answer_terms(forecast, query):
             start, end = window(parts[3])
             default = "total" if variable in ("precipitation", "snowfall") else "any"
             answers.append({
-                "variable": variable, "op": op, "threshold": threshold,
+                "term": term, "variable": variable, "op": op, "threshold": threshold,
                 "window_start_hours": start, "window_end_hours": end,
                 "aggregation": parts[4] if len(parts) > 4 else default,
                 "from": "2026-11-15T00:00:00Z", "to": "2026-11-16T00:00:00Z",
-                "probability": 0.42, "members": 131,
+                "probability": 0.42, "members": 131, "null_reason": None,
             })
         forecast["probabilities"] = answers
     if "totals" in query:
@@ -49,11 +49,12 @@ def answer_terms(forecast, query):
             variable, _, spec = term.partition(":")
             start, end = window(spec)
             totals.append({
-                "variable": variable, "window_start_hours": start, "window_end_hours": end,
-                "from": "2026-11-15T00:00:00Z", "to": "2026-11-18T00:00:00Z",
+                "term": term, "variable": variable,
+                "window_start_hours": start, "window_end_hours": end,
+                "from": "2026-11-15T00:00:00Z", "to": "2026-11-18T00:00:00Z", "aggregation": "total",
                 "quantiles": {"mean": 31.0, "p10": 12.0, "p25": 20.0, "p50": 29.0,
                               "p75": 40.0, "p90": 52.0, "min": 4.0, "max": 88.0},
-                "members": 131,
+                "members": 131, "null_reason": None,
             })
         forecast["window_totals"] = totals
     return forecast
@@ -74,7 +75,7 @@ def current_body(units):
                     "condition_text": "Snow", "condition_icon": "night_snow", "wind_speed": 6.0,
                     "wind_direction": 5.0, "source": "model"},
         "as_of": "2026-11-15T00:00:00Z", "model_run_initialized_at": "2026-11-15T00:00:00Z",
-        "nowcast_hours": None, "units": units, "attribution": forecast["attribution"],
+        "units": units, "attribution": forecast["attribution"],
     }
 
 
@@ -99,7 +100,7 @@ class Handler(BaseHTTPRequestHandler):
         elif parts == ["forecast"]:
             lat, lon = float(query["lat"][0]), float(query["lon"][0])
             if not (24 <= lat <= 50 and -125 <= lon <= -66):
-                status, payload = 400, body("error-outside-coverage.json")
+                status, payload = 404, body("error-outside-coverage.json")
             elif not self.headers.get("X-API-Key"):
                 status, payload = 403, body("error-pro-required.json")
             else:

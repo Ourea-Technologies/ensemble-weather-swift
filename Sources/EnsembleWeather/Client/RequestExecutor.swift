@@ -216,14 +216,16 @@ struct RequestExecutor: Sendable {
             body?.message
             ?? HTTPURLResponseText.reason(response.status)
         var retryAfter: TimeInterval?
-        if response.status == 429 || response.status == 503 {
+        if response.status == 429 || response.status == 503 || response.status == 504 {
             retryAfter = response.headers["Retry-After"].flatMap {
                 RetryAfter.seconds($0, now: configuration.clock.now)
             }
         }
         return EnsembleWeatherError(
             category: category, status: response.status, code: code, message: redact(message),
-            requestID: response.headers["X-Request-Id"], retryAfter: retryAfter,
+            requestID: body?.requestID ?? response.headers["X-Request-Id"],
+            docURL: body?.docURL.flatMap(URL.init(string:)), parameter: body?.parameter,
+            nearestLocation: body?.nearestLocation, retryAfter: retryAfter,
             rateLimit: RateLimit(headers: response.headers))
     }
 

@@ -77,7 +77,7 @@ public struct TimeSeriesPoint: Sendable, Hashable, Codable {
         case conditionText = "condition_text"
         case conditionIcon = "condition_icon"
         case isGustNotable = "gust_notable"
-        case precipitationType = "precip_type"
+        case precipitationType = "precipitation_type"
         case inversion
         case freezingLevel = "freezing_level"
         case ensemble
@@ -175,8 +175,6 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
     public var temperature: Quantiles
     /// Apparent temperature, the NWS convention: the wind chill (NWS 2001.
     public var feelsLike: Quantiles?
-    /// The Universal Thermal Climate Index (Bröde et al.
-    public var feelsLikeUTCI: Quantiles?
     /// Dewpoint.
     public var dewpoint: Quantiles?
     /// Precipitation.
@@ -185,12 +183,11 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
     public var windSpeed: Quantiles
     /// Peak gust (same unit as `wind_speed`).
     public var windGust: Quantiles?
-    /// Wind direction, pooled across models on the circle, so these quantiles describe an arc.
+    /// The wind direction as a CIRCULAR distribution: the resultant mean bearing, an offset-frame
+    /// standard deviation, and the central 50 % and 90 % of the members as clockwise arcs.
     ///
-    /// `min` may be numerically greater than `max` (an arc through north); read `windDirectionCircular` for the circular statistics.
-    public var windDirection: Quantiles
-    /// The wind direction as a CIRCULAR distribution: the resultant mean, an offset-frame standard deviation, and the central 50 % and 90 % of the members as clockwise arcs.
-    public var windDirectionCircular: CircularStats?
+    /// A sector's `to` may be numerically less than its `from` (an arc through north).
+    public var windDirection: CircularStats
     /// Snow level.
     public var snowLevel: Quantiles?
     /// Snow-to-liquid ratio.
@@ -200,10 +197,12 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
     /// Cloud cover percentage (0-100%).
     public var cloudCover: Quantiles?
     /// Skin / ground surface temperature in the caller's temperature units.
+    ///
+    /// Served only when ``ForecastOptions/extraVariables`` includes ``ForecastExtraVariable/skinTemperature``.
     public var skinTemperature: Quantiles?
-    /// Present only with `?diagnostics=ptype` (a model-native diagnostic; per-category probabilities are a follow-up).
-    public var precipitationTypeCode: Quantiles?
     /// Mean sea-level pressure: hPa for `metric` and `kelvin`, inHg for `imperial`.
+    ///
+    /// Served only when ``ForecastOptions/extraVariables`` includes ``ForecastExtraVariable/meanSeaLevelPressure``.
     public var meanSeaLevelPressure: Quantiles?
     /// Convective available potential energy, J/kg in every unit system.
     public var cape: Quantiles?
@@ -212,30 +211,26 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        temperature: Quantiles, feelsLike: Quantiles? = nil, feelsLikeUTCI: Quantiles? = nil,
-        dewpoint: Quantiles? = nil, precipitation: Quantiles, windSpeed: Quantiles,
-        windGust: Quantiles? = nil, windDirection: Quantiles,
-        windDirectionCircular: CircularStats? = nil, snowLevel: Quantiles? = nil,
+        temperature: Quantiles, feelsLike: Quantiles? = nil, dewpoint: Quantiles? = nil,
+        precipitation: Quantiles, windSpeed: Quantiles, windGust: Quantiles? = nil,
+        windDirection: CircularStats, snowLevel: Quantiles? = nil,
         snowToLiquidRatio: Quantiles? = nil, snowfall: Quantiles? = nil,
         cloudCover: Quantiles? = nil, skinTemperature: Quantiles? = nil,
-        precipitationTypeCode: Quantiles? = nil, meanSeaLevelPressure: Quantiles? = nil,
-        cape: Quantiles? = nil, relativeHumidity: Quantiles? = nil
+        meanSeaLevelPressure: Quantiles? = nil, cape: Quantiles? = nil,
+        relativeHumidity: Quantiles? = nil
     ) {
         self.temperature = temperature
         self.feelsLike = feelsLike
-        self.feelsLikeUTCI = feelsLikeUTCI
         self.dewpoint = dewpoint
         self.precipitation = precipitation
         self.windSpeed = windSpeed
         self.windGust = windGust
         self.windDirection = windDirection
-        self.windDirectionCircular = windDirectionCircular
         self.snowLevel = snowLevel
         self.snowToLiquidRatio = snowToLiquidRatio
         self.snowfall = snowfall
         self.cloudCover = cloudCover
         self.skinTemperature = skinTemperature
-        self.precipitationTypeCode = precipitationTypeCode
         self.meanSeaLevelPressure = meanSeaLevelPressure
         self.cape = cape
         self.relativeHumidity = relativeHumidity
@@ -244,19 +239,16 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case temperature
         case feelsLike = "feels_like"
-        case feelsLikeUTCI = "feels_like_utci"
         case dewpoint
         case precipitation
         case windSpeed = "wind_speed"
         case windGust = "wind_gust"
         case windDirection = "wind_direction"
-        case windDirectionCircular = "wind_direction_circular"
         case snowLevel = "snow_level"
         case snowToLiquidRatio = "slr"
         case snowfall
         case cloudCover = "cloud_cover"
         case skinTemperature = "skin_temperature"
-        case precipitationTypeCode = "ptype"
         case meanSeaLevelPressure = "mslp"
         case cape
         case relativeHumidity = "relative_humidity"
@@ -275,8 +267,9 @@ public struct ModelMean: Sendable, Hashable, Codable {
     public var precipitation: Quantiles?
     /// Absent when this model published nothing for the hour; never 0.
     public var windSpeed: Quantiles?
-    /// Absent when this model published nothing for the hour; never 0.
-    public var windDirection: Quantiles?
+    /// The model's own wind direction as a circular distribution; absent when this model
+    /// published nothing for the hour.
+    public var windDirection: CircularStats?
     /// Snow level.
     public var snowLevel: Quantiles?
     /// Snow-to-liquid ratio.
@@ -290,7 +283,7 @@ public struct ModelMean: Sendable, Hashable, Codable {
     public init(
         id: String, temperature: Quantiles? = nil, dewpoint: Quantiles? = nil,
         precipitation: Quantiles? = nil, windSpeed: Quantiles? = nil,
-        windDirection: Quantiles? = nil, snowLevel: Quantiles? = nil,
+        windDirection: CircularStats? = nil, snowLevel: Quantiles? = nil,
         snowToLiquidRatio: Quantiles? = nil, snowfall: Quantiles? = nil, isInterpolated: Bool? = nil
     ) {
         self.id = id

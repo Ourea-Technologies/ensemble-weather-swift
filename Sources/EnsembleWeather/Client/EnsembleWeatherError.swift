@@ -31,7 +31,7 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
         /// The key is valid but its tier does not allow this (403), for
         /// example `PRO_REQUIRED`.
         case permission
-        /// The location, run, report or route does not exist (404, 410).
+        /// The location or route does not exist (404, 410).
         case notFound
         /// The server rejected the request's parameters (400).
         case invalidRequest
@@ -62,9 +62,18 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
     public var code: ErrorCode?
     /// A human-readable explanation, from the server when it sent one.
     public var message: String
-    /// The `X-Request-Id` of the response, for support requests.
+    /// The request's id, for support requests: the body's `request_id`, else
+    /// the response's `X-Request-Id` header.
     public var requestID: String?
-    /// For a 429 or 503 with `Retry-After`: the seconds to wait before retrying.
+    /// The code's explanation on the docs errors page (cause, fix, whether to
+    /// retry), when the body carried one.
+    public var docURL: URL?
+    /// On a 400 about one query parameter, its name (`max_hours`, `prob`).
+    public var parameter: String?
+    /// On a coordinate request refused with `PRO_REQUIRED`: a named location
+    /// near the point whose forecast needs no key.
+    public var nearestLocation: NearestLocation?
+    /// For a 429, 503 or 504 with `Retry-After`: the seconds to wait before retrying.
     public var retryAfter: TimeInterval?
     /// The rate-limit state the error response reported, if any.
     public var rateLimit: RateLimit?
@@ -76,6 +85,9 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
         code: ErrorCode? = nil,
         message: String,
         requestID: String? = nil,
+        docURL: URL? = nil,
+        parameter: String? = nil,
+        nearestLocation: NearestLocation? = nil,
         retryAfter: TimeInterval? = nil,
         rateLimit: RateLimit? = nil
     ) {
@@ -84,6 +96,9 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
         self.code = code
         self.message = message
         self.requestID = requestID
+        self.docURL = docURL
+        self.parameter = parameter
+        self.nearestLocation = nearestLocation
         self.retryAfter = retryAfter
         self.rateLimit = rateLimit
     }
@@ -100,14 +115,14 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
     static func category(forCode code: ErrorCode) -> Category? {
         switch code {
         case .invalidAPIKey, .unauthorized: .authentication
-        case .proRequired, .forbidden: .permission
-        case .locationNotFound, .modelRunNotFound, .notFound, .gone: .notFound
-        case .badRequest, .invalidCoordinates, .invalidElevation, .invalidMaxHours,
-            .elevationRequired, .ambiguous, .feelsLikeUnavailable:
+        case .proRequired: .permission
+        case .locationNotFound, .notFound: .notFound
+        case .badRequest, .invalidCoordinates, .invalidElevation, .elevationRequired:
             .invalidRequest
         case .outsideCoverage: .outsideCoverage
         case .tooManyRequests: .rateLimited
-        case .forecastUnavailable, .timeout, .internalError, .databaseError: .unavailable
+        case .forecastUnavailable, .timeout, .internalError, .databaseError, .authUnavailable:
+            .unavailable
         default: nil
         }
     }
@@ -135,6 +150,7 @@ extension EnsembleWeatherError: LocalizedError, CustomStringConvertible {
         var parts = ["Ourea API error (\(category.rawValue)"]
         if let status { parts.append(", HTTP \(status)") }
         if let code { parts.append(", \(code.rawValue)") }
+        if let parameter { parts.append(", param \(parameter)") }
         parts.append("): \(message)")
         if let requestID { parts.append(" [request \(requestID)]") }
         return parts.joined()
@@ -166,31 +182,19 @@ public struct ErrorCode: RawRepresentable, Sendable, Hashable, ExpressibleByStri
     public static let unauthorized: Self = "UNAUTHORIZED"
     /// `PRO_REQUIRED`: the request needs a Pro key.
     public static let proRequired: Self = "PRO_REQUIRED"
-    /// `FORBIDDEN`: the caller may not do this.
-    public static let forbidden: Self = "FORBIDDEN"
     /// `LOCATION_NOT_FOUND`: no such location.
     public static let locationNotFound: Self = "LOCATION_NOT_FOUND"
-    /// `MODEL_RUN_NOT_FOUND`: no such model run.
-    public static let modelRunNotFound: Self = "MODEL_RUN_NOT_FOUND"
     /// `NOT_FOUND`: no such resource or route.
     public static let notFound: Self = "NOT_FOUND"
-    /// `GONE`: the resource was removed.
-    public static let gone: Self = "GONE"
     /// `BAD_REQUEST`: a malformed or unknown parameter.
     public static let badRequest: Self = "BAD_REQUEST"
-    /// `INVALID_COORDINATES`: latitude or longitude out of range.
+    /// `INVALID_COORDINATES`: a malformed latitude or longitude.
     public static let invalidCoordinates: Self = "INVALID_COORDINATES"
     /// `INVALID_ELEVATION`: elevation out of range.
     public static let invalidElevation: Self = "INVALID_ELEVATION"
-    /// `INVALID_MAX_HOURS`: `max_hours` out of range.
-    public static let invalidMaxHours: Self = "INVALID_MAX_HOURS"
     /// `ELEVATION_REQUIRED`: no terrain elevation for the point; pass one.
     public static let elevationRequired: Self = "ELEVATION_REQUIRED"
-    /// `AMBIGUOUS`: the name matches more than one location.
-    public static let ambiguous: Self = "AMBIGUOUS"
-    /// `FEELS_LIKE_UNAVAILABLE`: a requested feels-like index is not served yet.
-    public static let feelsLikeUnavailable: Self = "FEELS_LIKE_UNAVAILABLE"
-    /// `OUTSIDE_COVERAGE`: the point is outside the forecast domain.
+    /// `OUTSIDE_COVERAGE`: the point is outside the forecast domain (a 404).
     public static let outsideCoverage: Self = "OUTSIDE_COVERAGE"
     /// `TOO_MANY_REQUESTS`: over a rate budget.
     public static let tooManyRequests: Self = "TOO_MANY_REQUESTS"
@@ -202,4 +206,6 @@ public struct ErrorCode: RawRepresentable, Sendable, Hashable, ExpressibleByStri
     public static let internalError: Self = "INTERNAL_ERROR"
     /// `DATABASE_ERROR`: a server storage fault.
     public static let databaseError: Self = "DATABASE_ERROR"
+    /// `AUTH_UNAVAILABLE`: the server could not check the credentials just now (503).
+    public static let authUnavailable: Self = "AUTH_UNAVAILABLE"
 }
