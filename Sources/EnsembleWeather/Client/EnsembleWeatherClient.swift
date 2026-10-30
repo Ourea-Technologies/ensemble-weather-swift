@@ -71,7 +71,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - options: What to include.
     /// - Returns: The decoded response with its metadata.
     /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
-    public func forecast(
+    public func getPointForecast(
         latitude: Double, longitude: Double, elevationMeters: Double? = nil,
         options: ForecastOptions = ForecastOptions()
     ) async throws -> APIResponse<ForecastResponse> {
@@ -137,7 +137,7 @@ public final class EnsembleWeatherClient: Sendable {
     /// Current conditions at a point (`getCurrentByCoordinates`).
     ///
     /// Needs a Pro key.
-    public func currentConditions(
+    public func getPointCurrent(
         latitude: Double, longitude: Double, elevationMeters: Double? = nil,
         units: UnitSystem? = nil,
         sources: [String]? = nil, excludedSources: [String]? = nil,
@@ -176,7 +176,7 @@ public final class EnsembleWeatherClient: Sendable {
     /// The active alerts at a point (`getAlertsByCoordinates`).
     ///
     /// Needs a Pro key.
-    public func alerts(latitude: Double, longitude: Double) async throws -> APIResponse<
+    public func getPointAlerts(latitude: Double, longitude: Double) async throws -> APIResponse<
         AlertsResponse
     > {
         var endpoint = Endpoint(operation: "getAlertsByCoordinates", path: ["api", "v1", "alerts"])
@@ -208,7 +208,7 @@ public final class EnsembleWeatherClient: Sendable {
     }
 
     /// The locations nearest a point (`getNearbyByCoordinates`).
-    public func nearbyLocations(
+    public func getPointNearby(
         latitude: Double, longitude: Double, limit: Int = 3, radiusKilometers: Double = 50,
         units: UnitSystem? = nil
     ) async throws -> APIResponse<NearbyPointLocations> {

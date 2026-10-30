@@ -26,16 +26,20 @@ struct SpecDriftTests {
     /// The test checks the call reaches the operation's route.
     static let calls: [String: @Sendable (EnsembleWeatherClient) async throws -> Void] = [
         "getLocationForecast": { _ = try await $0.forecast(for: "or/mt-hood-meadows") },
-        "getPointForecast": { _ = try await $0.forecast(latitude: 45.3, longitude: -121.7) },
+        "getPointForecast": {
+            _ = try await $0.getPointForecast(latitude: 45.3, longitude: -121.7)
+        },
         "getCurrentConditions": { _ = try await $0.currentConditions(for: "or/mt-hood-meadows") },
         "getCurrentByCoordinates": {
-            _ = try await $0.currentConditions(latitude: 45.3, longitude: -121.7)
+            _ = try await $0.getPointCurrent(latitude: 45.3, longitude: -121.7)
         },
         "getLocationAlerts": { _ = try await $0.alerts(for: "or/mt-hood-meadows") },
-        "getAlertsByCoordinates": { _ = try await $0.alerts(latitude: 45.3, longitude: -121.7) },
+        "getAlertsByCoordinates": {
+            _ = try await $0.getPointAlerts(latitude: 45.3, longitude: -121.7)
+        },
         "getNearbyLocations": { _ = try await $0.nearbyLocations(to: "or/mt-hood-meadows") },
         "getNearbyByCoordinates": {
-            _ = try await $0.nearbyLocations(latitude: 45.3, longitude: -121.7)
+            _ = try await $0.getPointNearby(latitude: 45.3, longitude: -121.7)
         },
         "searchLocations": { _ = try await $0.searchLocations("hood") },
         "getAllLocations": { _ = try await $0.locationPage() },

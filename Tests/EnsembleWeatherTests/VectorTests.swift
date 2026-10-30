@@ -167,7 +167,7 @@ private struct VectorRun {
                     ["location.type": forecast.location.type]
                 }
             case "getPointForecast":
-                let response = try await client.forecast(
+                let response = try await client.getPointForecast(
                     latitude: args["lat"]?.number ?? .nan, longitude: args["lon"]?.number ?? .nan,
                     elevationMeters: args["elevation_m"]?.number, options: try forecastOptions(args)
                 )

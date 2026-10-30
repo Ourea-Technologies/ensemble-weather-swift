@@ -7,7 +7,7 @@ import EnsembleWeather
 let client = EnsembleWeatherClient()
 
 do {
-    _ = try await client.forecast(latitude: 51.5, longitude: -0.1)  // London: outside CONUS
+    _ = try await client.getPointForecast(latitude: 51.5, longitude: -0.1)  // London: outside CONUS
 } catch let error as EnsembleWeatherError where error.code == .outsideCoverage {
     print("Outside the forecast domain (\(error.code?.rawValue ?? "")): \(error.message)")
 } catch let error as EnsembleWeatherError where error.category == .permission {

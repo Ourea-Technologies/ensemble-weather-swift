@@ -12,7 +12,7 @@ import Foundation
 ///
 /// ```swift
 /// do {
-///     _ = try await client.forecast(latitude: 51.5, longitude: -0.1)
+///     _ = try await client.getPointForecast(latitude: 51.5, longitude: -0.1)
 /// } catch let error as EnsembleWeatherError where error.category == .outsideCoverage {
 ///     print("Outside the forecast domain: \(error.message)")
 /// }

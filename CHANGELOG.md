@@ -27,6 +27,12 @@ the removed and renamed members below.
 
 ### Changed
 
+- The coordinate methods have their own names, following the operation
+  ids: `forecast(latitude:longitude:...)` is `getPointForecast`,
+  `currentConditions(latitude:longitude:...)` is `getPointCurrent`,
+  `alerts(latitude:longitude:)` is `getPointAlerts` and
+  `nearbyLocations(latitude:longitude:...)` is `getPointNearby`. The
+  named-location methods keep their names. There are no aliases.
 - `EnsembleStats.windDirection` and `ModelMean.windDirection` are
   `CircularStats` (mean, standard deviation, 50 % and 90 % sectors), not
   `Quantiles`.

@@ -68,7 +68,7 @@ struct ClientTests {
         ])
         let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
         do {
-            _ = try await client.forecast(latitude: 45.3, longitude: -121.7)
+            _ = try await client.getPointForecast(latitude: 45.3, longitude: -121.7)
             Issue.record("expected an error")
         } catch let error as EnsembleWeatherError {
             #expect(error.category == .permission)
@@ -183,9 +183,9 @@ struct ClientTests {
         let transport = MockTransport([HTTPResponse(status: 418), HTTPResponse(status: 418)])
         let client = EnsembleWeatherClient(
             configuration: testConfiguration(apiKey: "ow_pro", transport: transport))
-        _ = try? await client.nearbyLocations(
+        _ = try? await client.getPointNearby(
             latitude: 45.3311, longitude: -121.6649, limit: 3, radiusKilometers: 50)
-        _ = try? await client.currentConditions(
+        _ = try? await client.getPointCurrent(
             latitude: 45.3311, longitude: -121.6649, units: .imperial, includesNowcastHours: true)
         let queries = transport.requests.map {
             URLComponents(url: $0.url, resolvingAgainstBaseURL: false)?.percentEncodedQuery

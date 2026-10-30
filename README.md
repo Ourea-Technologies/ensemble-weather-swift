@@ -145,7 +145,7 @@ coordinate request: a named location that answers without a key) and, for
 
 ```swift
 do {
-    _ = try await client.forecast(latitude: 51.5, longitude: -0.1)
+    _ = try await client.getPointForecast(latitude: 51.5, longitude: -0.1)
 } catch let error as EnsembleWeatherError where error.code == .outsideCoverage {
     print(error.message)
 }

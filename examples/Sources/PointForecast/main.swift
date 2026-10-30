@@ -12,7 +12,7 @@ guard let apiKey = ProcessInfo.processInfo.environment["OUREA_API_KEY"], !apiKey
 }
 
 let client = EnsembleWeatherClient(apiKey: apiKey)
-let forecast = try await client.forecast(
+let forecast = try await client.getPointForecast(
     latitude: 45.3311, longitude: -121.7113, elevationMeters: 1829,
     options: ForecastOptions(maxHours: 48))
 

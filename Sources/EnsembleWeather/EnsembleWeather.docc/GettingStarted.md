@@ -31,7 +31,7 @@ member variable. See <https://oureawx.com/pricing>.
 
 ```swift
 let client = EnsembleWeatherClient(apiKey: "ow_...")
-let point = try await client.forecast(latitude: 45.3311, longitude: -121.6649, elevationMeters: 1661)
+let point = try await client.getPointForecast(latitude: 45.3311, longitude: -121.6649, elevationMeters: 1661)
 ```
 
 Search, catalog detail and attribution are sent without the key even when
@@ -45,7 +45,7 @@ Every call throws ``EnsembleWeatherError``. Switch on its
 
 ```swift
 do {
-    _ = try await client.forecast(latitude: 51.5, longitude: -0.1)
+    _ = try await client.getPointForecast(latitude: 51.5, longitude: -0.1)
 } catch let error as EnsembleWeatherError where error.code == .outsideCoverage {
     print(error.message)
 }
