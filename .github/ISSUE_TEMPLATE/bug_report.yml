@@ -31,4 +31,4 @@ body:
   - type: input
     id: request-id
     attributes:
-      label: X-Request-Id of a failing response (EnsembleWeatherError.requestID), if any
+      label: X-Request-Id of a failing response (OureaError.requestID), if any

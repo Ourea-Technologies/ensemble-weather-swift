@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-examples=(Quickstart PointForecast ChanceOfSnow StormTotal SearchAndCatalog CurrentAndAlerts ErrorHandling Units)
+examples=(Quickstart PointForecast ChanceOfSnow StormTotal SearchAndCatalog CurrentAndAlerts ErrorHandling Units SnowReport Maps)
 
 swift build --package-path examples
 bin="$(swift build --package-path examples --show-bin-path)"
