@@ -6,19 +6,19 @@ import Foundation
 /// A client for the Ourea probabilistic weather API (v1).
 ///
 /// ```swift
-/// let client = EnsembleWeatherClient()   // anonymous, or OUREA_API_KEY
+/// let client = Client()   // anonymous, or OUREA_API_KEY
 /// let forecast = try await client.forecast(for: "or/mt-hood-meadows")
 /// ```
 ///
 /// The client is `Sendable`: share one instance across tasks. Every call is
 /// a `GET` sent at its canonical URL; connection errors, 429, 502, 503 and
 /// 504 are retried; responses are revalidated through a local `ETag` cache.
-/// Calls throw ``EnsembleWeatherError`` (or `CancellationError`).
+/// Calls throw ``OureaError`` (or `CancellationError`).
 ///
 /// Search, catalog detail and attribution are open routes: they are sent
 /// without the API key, even when the client has one, so callers share the
 /// edge cache. Set ``Configuration/sendsKeyOnOpenRoutes`` to send it anyway.
-public final class EnsembleWeatherClient: Sendable {
+public final class Client: Sendable {
     /// The client's configuration.
     public let configuration: Configuration
     private let executor: RequestExecutor
@@ -50,7 +50,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - location: The location, such as `"or/mt-hood-meadows"`.
     ///   - options: What to include, including probability terms and window totals.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func forecast(for location: LocationID, options: ForecastOptions = ForecastOptions())
         async throws -> APIResponse<ForecastResponse>
     {
@@ -70,7 +70,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - elevationMeters: The elevation to forecast at; `nil` uses the terrain.
     ///   - options: What to include.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func getPointForecast(
         latitude: Double, longitude: Double, elevationMeters: Double? = nil,
         options: ForecastOptions = ForecastOptions()
@@ -120,7 +120,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - excludedSources: A denylist of observation sources.
     ///   - includesNowcastHours: Adds the obs-blended `nowcastHours` band.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func currentConditions(
         for location: LocationID, units: UnitSystem? = nil, sources: [String]? = nil,
         excludedSources: [String]? = nil, includesNowcastHours: Bool = false
@@ -184,6 +184,112 @@ public final class EnsembleWeatherClient: Sendable {
         return try await get(AlertsResponse.self, endpoint)
     }
 
+    // MARK: - Season, snow trend and snowpack
+
+    /// The water-year totals so far at a named location (`getLocationSeason`).
+    ///
+    /// - Parameters:
+    ///   - location: The location.
+    ///   - waterYear: The water year (2027 or later); `nil` is the current one.
+    ///   - includesDaily: Adds the day-by-day rows.
+    ///   - units: The unit system; `nil` uses the client's.
+    /// - Returns: The decoded response with its metadata.
+    /// - Throws: ``OureaError`` (or `CancellationError`).
+    public func season(
+        for location: LocationID, waterYear: Int? = nil, includesDaily: Bool = false,
+        units: UnitSystem? = nil
+    ) async throws -> APIResponse<SeasonResponse> {
+        var endpoint = try locationEndpoint("getLocationSeason", location, "season")
+        endpoint.query.add("water_year", waterYear)
+        if includesDaily { endpoint.query.addList("include", ["daily"]) }
+        addUnits(to: &endpoint.query, units)
+        return try await get(SeasonResponse.self, endpoint)
+    }
+
+    /// Each recent run's daily snowfall at a named location, by source (`getLocationSnowTrend`).
+    ///
+    /// Needs a Plus or Pro key: anonymous and Free callers get a permission
+    /// error (`PLUS_REQUIRED`).
+    ///
+    /// - Parameters:
+    ///   - location: The location.
+    ///   - elevation: A named elevation (`location.elevations[].name`); `nil` is the primary.
+    ///   - units: The unit system; `nil` uses the client's.
+    /// - Returns: The decoded response with its metadata.
+    /// - Throws: ``OureaError`` (or `CancellationError`).
+    public func snowTrend(
+        for location: LocationID, elevation: String? = nil, units: UnitSystem? = nil
+    ) async throws -> APIResponse<SnowTrendResponse> {
+        var endpoint = try locationEndpoint("getLocationSnowTrend", location, "snow-trend")
+        endpoint.query.add("elevation", elevation)
+        addUnits(to: &endpoint.query, units)
+        return try await get(SnowTrendResponse.self, endpoint)
+    }
+
+    /// The snowpack forecast of a named location's spots (`getLocationSnowpack`, beta).
+    public func snowpack(for location: LocationID, units: UnitSystem? = nil) async throws
+        -> APIResponse<SnowpackResponse>
+    {
+        var endpoint = try locationEndpoint("getLocationSnowpack", location, "snowpack")
+        addUnits(to: &endpoint.query, units)
+        return try await get(SnowpackResponse.self, endpoint)
+    }
+
+    /// The snow-depth plume of a named location (`getLocationSnowpackPlume`, beta).
+    public func snowpackPlume(for location: LocationID, units: UnitSystem? = nil) async throws
+        -> APIResponse<SnowpackPlumeResponse>
+    {
+        var endpoint = try locationEndpoint(
+            "getLocationSnowpackPlume", location, "snowpack", "plume")
+        addUnits(to: &endpoint.query, units)
+        return try await get(SnowpackPlumeResponse.self, endpoint)
+    }
+
+    private func locationEndpoint(
+        _ operation: String, _ location: LocationID, _ suffix: String...
+    ) throws(OureaError) -> Endpoint {
+        Endpoint(
+            operation: operation,
+            path: ["api", "v1", "locations"] + (try location.pathSegments()) + suffix)
+    }
+
+    private func addUnits(to query: inout QueryString, _ units: UnitSystem?) {
+        query.add(
+            "units", (units ?? configuration.units).rawValue, default: UnitSystem.metric.rawValue)
+    }
+
+    // MARK: - Maps (GeoJSON)
+
+    /// The outlines of the active winter and wind alerts, as GeoJSON (`getAlertOutlines`).
+    ///
+    /// The body is passed through untouched: each feature's `properties`
+    /// keep the API's keys.
+    ///
+    /// - Parameters:
+    ///   - classes: Restricts to these alert classes; empty is every class.
+    ///   - boundingBox: Restricts to the outlines that meet a box.
+    /// - Returns: The decoded response with its metadata.
+    /// - Throws: ``OureaError`` (or `CancellationError`).
+    public func alertOutlines(classes: Set<AlertClass> = [], boundingBox: BoundingBox? = nil)
+        async throws -> APIResponse<AlertOutlineCollection>
+    {
+        var endpoint = Endpoint(
+            operation: "getAlertOutlines", path: ["api", "v1", "alerts", "outlines"])
+        endpoint.query.addList("class", classes.map(\.rawValue))
+        endpoint.query.addWireValue("bbox", try boundingBox?.wireValue())
+        return try await get(AlertOutlineCollection.self, endpoint)
+    }
+
+    /// The avalanche forecast zones with their current ratings, as GeoJSON (`getAvalancheZones`).
+    ///
+    /// The body is passed through untouched: each feature's `properties`
+    /// keep the API's keys.
+    public func avalancheZones() async throws -> APIResponse<AvalancheZoneCollection> {
+        let endpoint = Endpoint(
+            operation: "getAvalancheZones", path: ["api", "v1", "avalanche", "zones"])
+        return try await get(AvalancheZoneCollection.self, endpoint)
+    }
+
     // MARK: - Locations
 
     /// The locations nearest a named location (`getNearbyLocations`).
@@ -194,7 +300,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - radiusKilometers: The search radius (at most 100); default 50.
     ///   - units: The unit system; `nil` uses the client's.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func nearbyLocations(
         to location: LocationID, limit: Int = 3, radiusKilometers: Double = 50,
         units: UnitSystem? = nil
@@ -238,11 +344,18 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - county: Restricts to a county.
     ///   - type: Restricts to a location type.
     ///   - limit: The most hits (1...100); default 20.
+    ///   - sort: Ranks the hits by an explore metric instead of by relevance (the default); each
+    ///     hit then carries its ``SearchHit/explore`` value.
+    ///   - order: The order of a metric sort; default highest first.
+    ///   - near: Restricts to the hits within `radiusKilometers` of a point.
+    ///   - radiusKilometers: The radius around `near`; default 100.
+    ///   - units: The unit system of the explore values; `nil` uses the client's.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func searchLocations(
         _ query: String, state: String? = nil, county: String? = nil, type: LocationType? = nil,
-        limit: Int = 20
+        limit: Int = 20, sort: ExploreMetric? = nil, order: RankOrder = .descending,
+        near: Coordinate? = nil, radiusKilometers: Double = 100, units: UnitSystem? = nil
     ) async throws -> APIResponse<LocationSearchResults> {
         var endpoint = Endpoint(
             operation: "searchLocations", path: ["api", "v1", "search", "locations"],
@@ -252,7 +365,89 @@ public final class EnsembleWeatherClient: Sendable {
         endpoint.query.add("county", county)
         endpoint.query.add("type", type?.rawValue)
         endpoint.query.add("limit", limit, default: 20)
+        endpoint.query.add("sort", sort?.rawValue, default: "relevance")
+        endpoint.query.add("order", order.rawValue, default: RankOrder.descending.rawValue)
+        endpoint.query.addWireValue("near", try near?.wireValue())
+        endpoint.query.add("radius_km", radiusKilometers, default: 100)
+        endpoint.query.add(
+            "units", (units ?? configuration.units).rawValue, default: UnitSystem.metric.rawValue)
         return try await get(LocationSearchResults.self, endpoint)
+    }
+
+    // MARK: - Explore and composition
+
+    /// One page of places ranked by a metric (`explore`).
+    ///
+    /// Works anonymously; the key is sent, as the ranking reads the tier.
+    ///
+    /// - Parameters:
+    ///   - metric: What to rank by, such as ``ExploreMetric/snow5Days``.
+    ///   - order: Highest first (the default) or lowest first.
+    ///   - type: Restricts to a location type.
+    ///   - state: Restricts to a state; a two-letter code is lowercased.
+    ///   - near: Restricts to the places within `radiusKilometers` of a point.
+    ///   - radiusKilometers: The radius around `near` (at most 1000); default 100.
+    ///   - elevationMin: The lowest elevation to rank, in the request's length units.
+    ///   - elevationMax: The highest elevation to rank, in the request's length units.
+    ///   - points: Each location's primary point (the default), or every named elevation.
+    ///   - limit: The page size (1...100); default 25.
+    ///   - cursor: The previous page's ``ExploreResponse/nextCursor``.
+    ///   - units: The unit system; `nil` uses the client's.
+    /// - Returns: The decoded response with its metadata.
+    /// - Throws: ``OureaError`` (or `CancellationError`).
+    public func explorePage(
+        _ metric: ExploreMetric, order: RankOrder = .descending, type: LocationType? = nil,
+        state: String? = nil, near: Coordinate? = nil, radiusKilometers: Double = 100,
+        elevationMin: Double? = nil, elevationMax: Double? = nil,
+        points: ExplorePoints = .primary, limit: Int = 25, cursor: String? = nil,
+        units: UnitSystem? = nil
+    ) async throws -> APIResponse<ExploreResponse> {
+        var endpoint = Endpoint(operation: "explore", path: ["api", "v1", "explore"])
+        endpoint.query.add("metric", metric.rawValue)
+        endpoint.query.add("order", order.rawValue, default: RankOrder.descending.rawValue)
+        endpoint.query.add("type", type?.rawValue)
+        if let state {
+            let isCode = state.count == 2 && state.allSatisfy { $0.isASCII && $0.isLetter }
+            endpoint.query.add("state", isCode ? state.lowercased() : state)
+        }
+        endpoint.query.addWireValue("near", try near?.wireValue())
+        endpoint.query.add("radius_km", radiusKilometers, default: 100)
+        endpoint.query.add("elevation_min", elevationMin)
+        endpoint.query.add("elevation_max", elevationMax)
+        endpoint.query.add("points", points.rawValue, default: ExplorePoints.primary.rawValue)
+        endpoint.query.add("limit", limit, default: 25)
+        endpoint.query.add("cursor", cursor)
+        endpoint.query.add(
+            "units", (units ?? configuration.units).rawValue, default: UnitSystem.metric.rawValue)
+        return try await get(ExploreResponse.self, endpoint)
+    }
+
+    /// Every place ranked by a metric, fetched page by page (`explore`).
+    ///
+    /// Takes the arguments of `explorePage`, with `pageSize` as its `limit`.
+    public func explore(
+        _ metric: ExploreMetric, order: RankOrder = .descending, type: LocationType? = nil,
+        state: String? = nil, near: Coordinate? = nil, radiusKilometers: Double = 100,
+        elevationMin: Double? = nil, elevationMax: Double? = nil,
+        points: ExplorePoints = .primary, pageSize: Int = 25, units: UnitSystem? = nil
+    ) -> PageSequence<ExploreItem> {
+        PageSequence { cursor in
+            let page = try await self.explorePage(
+                metric, order: order, type: type, state: state, near: near,
+                radiusKilometers: radiusKilometers, elevationMin: elevationMin,
+                elevationMax: elevationMax, points: points, limit: pageSize, cursor: cursor,
+                units: units)
+            return (page.items, page.nextCursor)
+        }
+    }
+
+    /// The models the forecast is blended from and their members (`getComposition`).
+    ///
+    /// An open route: sent without the API key.
+    public func composition() async throws -> APIResponse<CompositionResponse> {
+        let endpoint = Endpoint(
+            operation: "getComposition", path: ["api", "v1", "composition"], isOpenRoute: true)
+        return try await get(CompositionResponse.self, endpoint)
     }
 
     /// One page of forecast locations, nationwide (`getAllLocations`) or in
@@ -265,7 +460,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - limit: The page size (1...5000).
     ///   - cursor: The previous page's ``LocationPage/nextCursor``.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func locationPage(
         state: String? = nil, type: LocationType? = nil, units: UnitSystem? = nil,
         limit: Int? = nil,
@@ -296,7 +491,7 @@ public final class EnsembleWeatherClient: Sendable {
         PageSequence { cursor in
             let page = try await self.locationPage(
                 state: state, type: type, units: units, limit: pageSize, cursor: cursor)
-            return (page.locations, page.nextCursor)
+            return (page.items, page.nextCursor)
         }
     }
 
@@ -315,7 +510,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - limit: The page size (1...100); default 20.
     ///   - cursor: The previous page's ``CatalogLocationPage/nextCursor``.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func catalogLocationPage(
         country: String? = nil, admin1: String? = nil, type: LocationType? = nil,
         template: String? = nil,
@@ -355,7 +550,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - extras: Optional extras to include.
     ///   - locale: The content locale; default `en`.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func catalogLocation(slug: String, extras: Set<CatalogExtra> = [], locale: String = "en")
         async throws -> APIResponse<CatalogLocationDetail>
     {
@@ -378,7 +573,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - limit: The page size (1...100); default 20.
     ///   - cursor: The previous page's ``CatalogStationPage/nextCursor``.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func catalogStationPage(
         country: String? = nil, admin1: String? = nil, networks: [String]? = nil,
         capabilities: [String]? = nil, status: String? = nil, limit: Int = 20, cursor: String? = nil
@@ -430,7 +625,7 @@ public final class EnsembleWeatherClient: Sendable {
     ///   - limit: The page size (1...100); default 10.
     ///   - cursor: The previous page's ``AvailableRuns/nextCursor``.
     /// - Returns: The decoded response with its metadata.
-    /// - Throws: ``EnsembleWeatherError`` (or `CancellationError`).
+    /// - Throws: ``OureaError`` (or `CancellationError`).
     public func availableRuns(limit: Int = 10, cursor: String? = nil) async throws
         -> APIResponse<AvailableRuns>
     {
@@ -462,15 +657,15 @@ public final class EnsembleWeatherClient: Sendable {
     }
 }
 
-extension EnsembleWeatherClient: CustomStringConvertible {
+extension Client: CustomStringConvertible {
     /// A summary that never includes the API key.
-    public var description: String { "EnsembleWeatherClient(\(configuration))" }
+    public var description: String { "Client(\(configuration))" }
 }
 
 extension QueryString {
     /// Adds `lat` and `lon`, sent exactly as given.
     mutating func addCoordinates(_ latitude: Double, _ longitude: Double)
-        throws(EnsembleWeatherError)
+        throws(OureaError)
     {
         guard latitude.isFinite, longitude.isFinite else {
             throw .usage("Latitude and longitude must be finite numbers.")

@@ -66,6 +66,11 @@ struct MiniYAML {
                 items.append(
                     position < lines.count && lines[position].indent > indent
                         ? try parseNode(indent: lines[position].indent) : .null)
+            } else if rest == "-" || rest.hasPrefix("- ") {
+                // A compact nested sequence: "- - item" continues at indent + 2.
+                let inner = indent + 2
+                lines[position] = Line(number: line.number, indent: inner, text: rest)
+                items.append(try parseSequence(indent: inner))
             } else if splitKey(rest) != nil && !rest.hasPrefix("{") && !rest.hasPrefix("[") {
                 // A compact mapping: "- key: value" continues at indent + 2.
                 let inner = indent + 2

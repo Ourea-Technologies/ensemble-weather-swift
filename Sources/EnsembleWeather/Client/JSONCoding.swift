@@ -51,7 +51,7 @@ enum JSONCoding {
         do {
             return try decoder().decode(type, from: body)
         } catch {
-            throw EnsembleWeatherError.invalidResponse(
+            throw OureaError.invalidResponse(
                 "The response is not a valid \(type): \(describe(error))", status: status)
         }
     }

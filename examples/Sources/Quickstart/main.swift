@@ -5,7 +5,7 @@
 
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()
+let client = Client()
 let sixInches = ProbabilityQuery.snowfall(atLeast: .inches(6))
 
 let forecast = try await client.forecast(
@@ -13,7 +13,7 @@ let forecast = try await client.forecast(
     options: ForecastOptions(probabilities: [sixInches]))
 
 print("\(forecast.location.name), temperature over the next 24 h (p10 to p90):")
-for hour in forecast.forecast.timeseries ?? [] {
+for hour in forecast.series.timeseries ?? [] {
     if let range = hour.ensemble.temperature.range(.p10ToP90) {
         let unit = forecast.units.temperatureUnit
         print(
@@ -22,7 +22,7 @@ for hour in forecast.forecast.timeseries ?? [] {
     }
 }
 
-if let snow = forecast.probability(for: sixInches), let chance = snow.probability {
+if let snow = forecast.probability(for: sixInches), let chance = snow.value {
     print(
         "Chance of at least 6 in of snow in the next 24 h: \(chance.formatted(.percent)) (\(snow.members) members)"
     )

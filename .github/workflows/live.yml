@@ -32,7 +32,7 @@ jobs:
         run: env -u OUREA_API_KEY swift run --package-path examples Quickstart
       - name: Contract run with the read-only key
         run: |
-          for example in PointForecast ChanceOfSnow StormTotal SearchAndCatalog CurrentAndAlerts ErrorHandling Units; do
+          for example in PointForecast ChanceOfSnow StormTotal SearchAndCatalog CurrentAndAlerts ErrorHandling Units SnowReport Maps; do
             echo "== $example"
             swift run --package-path examples "$example"
           done

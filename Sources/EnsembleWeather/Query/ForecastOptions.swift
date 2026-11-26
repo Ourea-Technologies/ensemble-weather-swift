@@ -26,8 +26,8 @@ public struct ForecastOptions: Sendable, Hashable {
     public var includesPast = false
     /// Includes each model's own distribution per hour (Pro).
     public var includesModels = false
-    /// Includes individual ensemble members per hour (Free: the plume view).
-    public var includesMembers = false
+    /// The individual ensemble members: none (the default), per hour, or the plume view.
+    public var members: MemberSelection = .excluded
     /// Forecasts at the location's other named elevations.
     public var elevations: ElevationSelection?
     /// Includes the daily summaries.
@@ -79,6 +79,17 @@ public struct ForecastOptions: Sendable, Hashable {
     }
 }
 
+/// Which ensemble members a forecast includes (`members`).
+public enum MemberSelection: Sendable, Hashable {
+    /// No members (the default; `members` is not sent).
+    case excluded
+    /// Each member's values per hour, in `timeseries[].members` (`members=true`).
+    case rows
+    /// The plume view: the members in columns, in ``ForecastData/plume``, instead of the
+    /// hourly series (`members=plume`).
+    case plume
+}
+
 /// Which extra elevations a forecast includes.
 public enum ElevationSelection: Sendable, Hashable {
     /// Every named elevation of the location.
@@ -118,7 +129,7 @@ public enum CatalogExtra: String, Sendable, Hashable, CaseIterable {
 extension ForecastOptions {
     /// Adds the forecast parameters to `query`, returning the resolved terms
     /// and totals for matching the answers.
-    func apply(to query: inout QueryString, units: UnitSystem) throws(EnsembleWeatherError) -> (
+    func apply(to query: inout QueryString, units: UnitSystem) throws(OureaError) -> (
         [ResolvedProbabilityTerm], [ResolvedWindowTotal]
     ) {
         var terms: [ResolvedProbabilityTerm] = []
@@ -132,7 +143,11 @@ extension ForecastOptions {
         query.add("include_past", includesPast, default: false)
         query.add("units", units.rawValue, default: UnitSystem.metric.rawValue)
         query.add("models", includesModels, default: false)
-        query.add("members", includesMembers, default: false)
+        switch members {
+        case .excluded: break
+        case .rows: query.add("members", "true")
+        case .plume: query.add("members", "plume")
+        }
         switch elevations {
         case .all: query.add("elevations", "all")
         case .named(let names): query.addList("elevations", names)

@@ -18,7 +18,7 @@ import Foundation
 /// ```
 ///
 /// Throw `URLError` (or any error) when no response arrives; the client
-/// reports it as a ``EnsembleWeatherError/Category/connection`` error and
+/// reports it as a ``OureaError/Category/connection`` error and
 /// retries it.
 public protocol HTTPTransport: Sendable {
     /// Sends `request` and returns the response as received, 3xx included.

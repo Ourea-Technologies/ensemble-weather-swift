@@ -98,11 +98,11 @@ struct CanonicalFormTests {
             .snowfall(atLeast: Threshold(.nan)),
         ]
         for query in invalid {
-            #expect(throws: EnsembleWeatherError.self) {
+            #expect(throws: OureaError.self) {
                 try ResolvedProbabilityTerm(query, units: .metric)
             }
         }
-        #expect(throws: EnsembleWeatherError.self) {
+        #expect(throws: OureaError.self) {
             try ResolvedWindowTotal(WindowTotalQuery(variable: .temperature, window: .hours(24)))
         }
     }
@@ -114,10 +114,10 @@ struct CanonicalFormTests {
             try LocationID("oregon/mt-hood-meadows").pathSegments() == [
                 "oregon", "mt-hood-meadows",
             ])
-        #expect(throws: EnsembleWeatherError.self) {
+        #expect(throws: OureaError.self) {
             try LocationID("mt-hood-meadows").pathSegments()
         }
-        #expect(throws: EnsembleWeatherError.self) { try LocationID("a/b/c").pathSegments() }
+        #expect(throws: OureaError.self) { try LocationID("a/b/c").pathSegments() }
     }
 }
 
@@ -194,7 +194,7 @@ struct SupportTests {
     @Test("The User-Agent names the SDK and the Swift version")
     func userAgent() {
         #expect(
-            EnsembleWeatherVersion.userAgent.range(
+            SDKVersion.userAgent.range(
                 of: #"^ensemble-weather-swift/0\.1\.0 \(Swift/\d+\.\d+\)$"#,
                 options: .regularExpression) != nil)
     }

@@ -85,6 +85,17 @@ def alerts_body():
             "alerts": [], "attribution": forecast["attribution"]}
 
 
+# A location's subroutes and the other routes, each served from its vector body.
+SUBROUTES = {
+    "season": "season.json", "snow-trend": "snow-trend.json", "snowpack": "snowpack.json",
+    "snowpack/plume": "snowpack-plume.json",
+}
+ROUTES = {
+    "explore": "explore.json", "composition": "composition.json",
+    "alerts/outlines": "alert-outlines.json", "avalanche/zones": "avalanche-zones.json",
+}
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802 (http.server's naming)
         url = urlsplit(self.path)
@@ -97,6 +108,10 @@ class Handler(BaseHTTPRequestHandler):
             payload = current_body(query.get("units", ["metric"])[0])
         elif parts[:1] == ["locations"] and len(parts) == 4 and parts[3] == "alerts":
             payload = alerts_body()
+        elif parts[:1] == ["locations"] and len(parts) >= 4 and parts[3] in SUBROUTES:
+            payload = body(SUBROUTES["/".join(parts[3:])])
+        elif "/".join(parts) in ROUTES:
+            payload = body(ROUTES["/".join(parts)])
         elif parts == ["forecast"]:
             lat, lon = float(query["lat"][0]), float(query["lon"][0])
             if not (24 <= lat <= 50 and -125 <= lon <= -66):

@@ -12,7 +12,7 @@ import Foundation
 ///
 /// The default is an in-memory ``MemoryResponseCache``. Conform your own type
 /// to share entries across processes; pass `cache: nil` in
-/// ``EnsembleWeatherClient/Configuration`` to turn caching off.
+/// ``Client/Configuration`` to turn caching off.
 public protocol ResponseCache: Sendable {
     /// The entry stored under `key`, if any.
     func entry(forKey key: String) async -> CachedResponse?

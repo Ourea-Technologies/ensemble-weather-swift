@@ -17,9 +17,9 @@ struct SecurityTests {
 
     @Test("The key never appears in a configuration's or client's description, mirror or dump")
     func keyNotInDescriptions() {
-        let configuration = EnsembleWeatherClient.Configuration(
+        let configuration = Client.Configuration(
             apiKey: Self.secret, environment: [:])
-        let client = EnsembleWeatherClient(configuration: configuration)
+        let client = Client(configuration: configuration)
         var dumped = ""
         dump(configuration, to: &dumped)
         var dumpedClient = ""
@@ -38,7 +38,7 @@ struct SecurityTests {
         let echo = Data(
             #"{"error":"INVALID_API_KEY","message":"Key \#(Self.secret) is revoked."}"#.utf8)
         let transport = MockTransport([jsonResponse(401, body: echo)])
-        let client = EnsembleWeatherClient(
+        let client = Client(
             configuration: testConfiguration(apiKey: Self.secret, transport: transport))
         do {
             _ = try await client.forecast(for: "or/mt-hood-meadows")
@@ -58,12 +58,12 @@ struct SecurityTests {
         let transport = MockTransport(results: [.failure(Leaky())])
         var configuration = testConfiguration(apiKey: Self.secret, transport: transport)
         configuration.maxRetries = 0
-        let client = EnsembleWeatherClient(configuration: configuration)
+        let client = Client(configuration: configuration)
         do {
             _ = try await client.forecast(for: "or/mt-hood-meadows")
             Issue.record("expected an error")
         } catch {
-            #expect((error as? EnsembleWeatherError)?.category == .connection)
+            #expect((error as? OureaError)?.category == .connection)
             #expect(!"\(error)".contains(Self.secret))
         }
     }
@@ -76,7 +76,7 @@ struct SecurityTests {
                 200, body: try vectorBody("forecast-metric.json"),
                 headers: ["Sunset": "Wed, 01 Dec 2027 00:00:00 GMT"])
         ])
-        let client = EnsembleWeatherClient(
+        let client = Client(
             configuration: testConfiguration(
                 apiKey: Self.secret, transport: transport, notices: notices))
         _ = try await client.forecast(for: "or/mt-hood-meadows")
@@ -93,7 +93,7 @@ struct SecurityTests {
             HTTPResponse(status: 308, headers: ["Location": "https://api.oureawx.com/api/v1/y"]),
             jsonResponse(200, body: try vectorBody("forecast-metric.json")),
         ])
-        let client = EnsembleWeatherClient(
+        let client = Client(
             configuration: testConfiguration(apiKey: Self.secret, transport: transport))
         _ = try await client.forecast(for: "oregon/mt-hood-meadows")
         let keys = transport.requests.map { $0.headers["X-API-Key"] }
@@ -107,7 +107,7 @@ struct SecurityTests {
                 status: 302, headers: ["Location": "http://api.oureawx.com/api/v1/attribution"]),
             jsonResponse(200, body: try vectorBody("forecast-metric.json")),
         ])
-        let client = EnsembleWeatherClient(
+        let client = Client(
             configuration: testConfiguration(apiKey: Self.secret, transport: transport))
         _ = try await client.forecast(for: "or/mt-hood-meadows")
         #expect(transport.requests.last?.headers["X-API-Key"] == nil)
@@ -117,8 +117,8 @@ struct SecurityTests {
     func redirectLimit() async {
         let transport = MockTransport(
             Array(repeating: HTTPResponse(status: 302, headers: ["Location": "/again"]), count: 10))
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
-        await #expect(throws: EnsembleWeatherError.self) { _ = try await client.attribution() }
+        let client = Client(configuration: testConfiguration(transport: transport))
+        await #expect(throws: OureaError.self) { _ = try await client.attribution() }
         #expect(transport.requests.count == 6)
     }
 
@@ -146,8 +146,8 @@ struct SecurityTests {
     @Test("A TLS verification failure is reported, never retried")
     func tlsFailureNotRetried() async {
         let transport = MockTransport(results: [.failure(URLError(.serverCertificateUntrusted))])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
-        await #expect(throws: EnsembleWeatherError.self) { _ = try await client.attribution() }
+        let client = Client(configuration: testConfiguration(transport: transport))
+        await #expect(throws: OureaError.self) { _ = try await client.attribution() }
         #expect(transport.requests.count == 1)
     }
 
@@ -155,11 +155,11 @@ struct SecurityTests {
     func bodyBoundInClient() async {
         let huge = Data(count: 64 * 1024 * 1024 + 1)
         let transport = MockTransport([jsonResponse(200, body: huge)])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         do {
             _ = try await client.attribution()
             Issue.record("expected an error")
-        } catch let error as EnsembleWeatherError {
+        } catch let error as OureaError {
             #expect(error.category == .invalidResponse)
         } catch {
             Issue.record("unexpected \(error)")
@@ -179,7 +179,7 @@ struct SecurityTests {
         do {
             _ = try await transport.send(request)
             Issue.record("expected the bound to stop the body")
-        } catch let error as EnsembleWeatherError {
+        } catch let error as OureaError {
             #expect(error.category == .invalidResponse)
         }
         let small = try await transport.send(

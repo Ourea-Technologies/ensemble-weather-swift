@@ -27,7 +27,7 @@ jobs:
       - name: Tag matches the SDK version
         env:
           TAG: ${{ github.ref_name }}
-        run: grep -q "static let sdk = \"${TAG#v}\"" Sources/EnsembleWeather/Client/Configuration.swift
+        run: grep -q "static let current = \"${TAG#v}\"" Sources/EnsembleWeather/Client/Configuration.swift
       - run: swift format lint --strict --recursive Sources Tests examples Package.swift
       - run: scripts/check-unsafe-swift
       - run: swift build -Xswiftc -warnings-as-errors
@@ -38,6 +38,9 @@ jobs:
     name: GitHub release with provenance
     needs: verify
     runs-on: ubuntu-24.04
+    # Approval gate: the release environment's required reviewers sign off
+    # before the GitHub release is created.
+    environment: release
     permissions:
       contents: write # create the GitHub release
       id-token: write # sign the provenance attestation (OIDC)

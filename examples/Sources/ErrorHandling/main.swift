@@ -4,13 +4,13 @@
 
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()
+let client = Client()
 
 do {
     _ = try await client.getPointForecast(latitude: 51.5, longitude: -0.1)  // London: outside CONUS
-} catch let error as EnsembleWeatherError where error.code == .outsideCoverage {
+} catch let error as OureaError where error.code == .outsideCoverage {
     print("Outside the forecast domain (\(error.code?.rawValue ?? "")): \(error.message)")
-} catch let error as EnsembleWeatherError where error.category == .permission {
+} catch let error as OureaError where error.category == .permission {
     print("Point forecasts need a Pro key: \(error.message)")
 }
 

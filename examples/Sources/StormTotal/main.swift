@@ -5,7 +5,7 @@
 
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()
+let client = Client()
 let forecast = try await client.forecast(
     for: "or/mt-hood-meadows",
     options: ForecastOptions(
@@ -15,12 +15,12 @@ let forecast = try await client.forecast(
 for total in forecast.windowTotals {
     guard let quantiles = total.quantiles, let range = quantiles.range(.p10ToP90) else {
         print(
-            "\(total.variable.rawValue), hours 0-\(total.windowEndHours): unanswered "
+            "\(total.variable.rawValue), hours 0-\(total.endHours): unanswered "
                 + "(\(total.nullReason?.rawValue ?? "no reason given"))")
         continue
     }
     print(
-        "\(total.variable.rawValue), next \(total.windowEndHours) h: \(range.lower) to \(range.upper) "
+        "\(total.variable.rawValue), next \(total.endHours) h: \(range.lower) to \(range.upper) "
             + "\(forecast.units.amountUnit) (p10 to p90), median \(quantiles.median ?? 0), \(total.members) members"
     )
 }

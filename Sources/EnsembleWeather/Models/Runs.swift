@@ -7,8 +7,8 @@ import Foundation
 public struct AvailableRuns: Sendable, Hashable, Codable {
     /// What a forecast request serves now; `nil` when no cycle is servable.
     public var served: ServedRun?
-    /// Init times at least two models completed, newest first.
-    public var runs: [ModelRunSummary]
+    /// (JSON `runs`) Init times at least two models completed, newest first.
+    public var items: [ModelRunSummary]
     /// Count.
     public var count: Int
     /// Pass it back as `cursor` (with the same `limit`) for the next page; `nil` on the last page.
@@ -16,17 +16,17 @@ public struct AvailableRuns: Sendable, Hashable, Codable {
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        served: ServedRun?, runs: [ModelRunSummary], count: Int, nextCursor: String? = nil
+        served: ServedRun?, items: [ModelRunSummary], count: Int, nextCursor: String? = nil
     ) {
         self.served = served
-        self.runs = runs
+        self.items = items
         self.count = count
         self.nextCursor = nextCursor
     }
 
     enum CodingKeys: String, CodingKey {
         case served
-        case runs
+        case items = "runs"
         case count
         case nextCursor = "next_cursor"
     }

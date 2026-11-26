@@ -5,7 +5,7 @@
 
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()
+let client = Client()
 let questions: [ProbabilityQuery] = [
     .snowfall(atLeast: .inches(1)),
     .snowfall(atLeast: .inches(6)),
@@ -21,7 +21,7 @@ for answer in forecast.probabilities {
     let unit =
         answer.variable == .temperature ? forecast.units.temperatureUnit : forecast.units.amountUnit
     let chance =
-        answer.probability.map { $0.formatted(.percent) }
+        answer.value.map { $0.formatted(.percent) }
         ?? "unanswered (\(answer.nullReason?.rawValue ?? "no reason given"))"
     print(
         "P(\(answer.variable.rawValue) \(answer.comparison == .atLeast ? ">=" : "<=") \(answer.threshold) \(unit), "

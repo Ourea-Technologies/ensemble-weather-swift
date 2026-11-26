@@ -39,7 +39,7 @@ public struct ForecastWindow: Sendable, Hashable, Comparable {
     }
 
     /// The wire form: `<N>h`, or `<A>-<B>h` when the window does not start at 0.
-    func wireValue() throws(EnsembleWeatherError) -> String {
+    func wireValue() throws(OureaError) -> String {
         guard startHours >= 0, endHours > startHours, endHours <= Self.maximumHours else {
             throw .usage(
                 "A forecast window must satisfy 0 <= start < end <= \(Self.maximumHours) h; "

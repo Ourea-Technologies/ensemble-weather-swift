@@ -16,9 +16,9 @@ Forecasts, current conditions and alerts for named locations work without a
 key, at the Free tier:
 
 ```swift
-let client = EnsembleWeatherClient()
+let client = Client()
 let forecast = try await client.forecast(for: "or/mt-hood-meadows")
-for hour in forecast.forecast.timeseries ?? [] {
+for hour in forecast.series.timeseries ?? [] {
     print(hour.validTime, hour.ensemble.temperature.range(.p10ToP90) as Any)
 }
 ```
@@ -30,30 +30,30 @@ unlocks forecasts at any coordinates, 15 days, per-model data and every
 member variable. See <https://oureawx.com/pricing>.
 
 ```swift
-let client = EnsembleWeatherClient(apiKey: "ow_...")
+let client = Client(apiKey: "ow_...")
 let point = try await client.getPointForecast(latitude: 45.3311, longitude: -121.6649, elevationMeters: 1661)
 ```
 
-Search, catalog detail and attribution are sent without the key even when
+Search, composition, catalog detail and attribution are sent without the key even when
 the client has one, so the edge cache can share them between all callers.
-Set ``EnsembleWeatherClient/Configuration/sendsKeyOnOpenRoutes`` to change that.
+Set ``Client/Configuration/sendsKeyOnOpenRoutes`` to change that.
 
 ## Handle errors
 
-Every call throws ``EnsembleWeatherError``. Switch on its
-``EnsembleWeatherError/category``, or compare its ``EnsembleWeatherError/code``:
+Every call throws ``OureaError``. Switch on its
+``OureaError/category``, or compare its ``OureaError/code``:
 
 ```swift
 do {
     _ = try await client.getPointForecast(latitude: 51.5, longitude: -0.1)
-} catch let error as EnsembleWeatherError where error.code == .outsideCoverage {
+} catch let error as OureaError where error.code == .outsideCoverage {
     print(error.message)
 }
 ```
 
 Connection errors, 429, 502, 503 and 504 are retried (twice by default) with
 `Retry-After` or full-jitter backoff. Read the rate-limit state from
-``ResponseMetadata/rateLimit`` or ``EnsembleWeatherClient/rateLimit``.
+``ResponseMetadata/rateLimit`` or ``Client/rateLimit``.
 
 ## Caching
 

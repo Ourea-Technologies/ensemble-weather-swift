@@ -3,14 +3,14 @@
 
 import Foundation
 
-extension EnsembleWeatherClient {
+extension Client {
     /// How a client connects, authenticates, retries and caches.
     ///
     /// ```swift
-    /// var configuration = EnsembleWeatherClient.Configuration(apiKey: "ow_...")
+    /// var configuration = Client.Configuration(apiKey: "ow_...")
     /// configuration.units = .imperial
     /// configuration.maxRetries = 4
-    /// let client = EnsembleWeatherClient(configuration: configuration)
+    /// let client = Client(configuration: configuration)
     /// ```
     ///
     /// The API key never appears in the configuration's description.
@@ -76,7 +76,7 @@ extension EnsembleWeatherClient {
     }
 }
 
-extension EnsembleWeatherClient.Configuration: CustomStringConvertible,
+extension Client.Configuration: CustomStringConvertible,
     CustomDebugStringConvertible,
     CustomReflectable
 {
@@ -102,9 +102,9 @@ extension EnsembleWeatherClient.Configuration: CustomStringConvertible,
 }
 
 /// The SDK version and the `User-Agent` it sends.
-public enum EnsembleWeatherVersion {
+public enum SDKVersion {
     /// This SDK's version.
-    public static let sdk = "0.1.0"
+    public static let current = "0.1.0"
     /// The API contract this SDK targets.
     public static let apiContract = "v1"
 
@@ -122,5 +122,5 @@ public enum EnsembleWeatherVersion {
     }
 
     /// `ensemble-weather-swift/<version> (Swift/<version>)`.
-    public static var userAgent: String { "ensemble-weather-swift/\(sdk) (Swift/\(swift))" }
+    public static var userAgent: String { "ensemble-weather-swift/\(current) (Swift/\(swift))" }
 }

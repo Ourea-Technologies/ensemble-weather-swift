@@ -4,12 +4,12 @@
 
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()
+let client = Client()
 
 for units in [UnitSystem.metric, .imperial] {
     let forecast = try await client.forecast(
         for: "or/mt-hood-meadows", options: ForecastOptions(units: units))
-    guard let hour = forecast.forecast.timeseries?.first else { continue }
+    guard let hour = forecast.series.timeseries?.first else { continue }
     let temperature = hour.ensemble.temperature.median.map { "\($0)" } ?? "n/a"
     let precipitation = hour.ensemble.precipitation.median.map { "\($0)" } ?? "n/a"
     print(

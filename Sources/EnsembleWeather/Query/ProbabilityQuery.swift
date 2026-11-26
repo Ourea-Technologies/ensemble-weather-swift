@@ -155,7 +155,7 @@ struct ResolvedProbabilityTerm: Hashable, Comparable {
     let window: ForecastWindow
     let aggregation: ProbabilityAggregation
 
-    init(_ query: ProbabilityQuery, units: UnitSystem) throws(EnsembleWeatherError) {
+    init(_ query: ProbabilityQuery, units: UnitSystem) throws(OureaError) {
         let variable = query.variable
         guard variable.dimension != nil else {
             throw .usage("Unknown forecast variable '\(variable.rawValue)' in a probability term.")
@@ -270,7 +270,7 @@ struct ResolvedWindowTotal: Hashable, Comparable {
     let variable: ForecastVariable
     let window: ForecastWindow
 
-    init(_ query: WindowTotalQuery) throws(EnsembleWeatherError) {
+    init(_ query: WindowTotalQuery) throws(OureaError) {
         guard query.variable == .precipitation || query.variable == .snowfall else {
             throw .usage(
                 "Window totals are for precipitation and snowfall, not \(query.variable.rawValue).")
