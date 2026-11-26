@@ -15,7 +15,7 @@ public enum FreezingLevel: Sendable, Hashable {
 }
 
 extension FreezingLevel: Codable {
-    private enum CodingKeys: String, CodingKey {
+    enum CodingKeys: String, CodingKey {
         case kind
         case height
         case aboveFreezingLayerAloft = "above_freezing_layer_aloft"

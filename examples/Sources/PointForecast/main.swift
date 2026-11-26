@@ -11,7 +11,7 @@ guard let apiKey = ProcessInfo.processInfo.environment["OUREA_API_KEY"], !apiKey
     exit(0)
 }
 
-let client = EnsembleWeatherClient(apiKey: apiKey)
+let client = Client(apiKey: apiKey)
 let forecast = try await client.getPointForecast(
     latitude: 45.3311, longitude: -121.7113, elevationMeters: 1829,
     options: ForecastOptions(maxHours: 48))
@@ -21,7 +21,7 @@ if let point = forecast.point {
         "Grid point \(point.latitude), \(point.longitude) at \(point.elevation) \(forecast.units.heightUnit)"
     )
 }
-for hour in (forecast.forecast.timeseries ?? []).prefix(6) {
+for hour in (forecast.series.timeseries ?? []).prefix(6) {
     let wind = hour.ensemble.windSpeed
     print(
         "\(hour.validTime): \(hour.conditionText); wind median \(wind.median.map { "\($0)" } ?? "n/a") \(forecast.units.speedUnit)"

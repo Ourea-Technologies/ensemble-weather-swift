@@ -23,16 +23,16 @@ public struct ForecastResponse: Sendable, Hashable {
     public var windowTotals: [WindowTotal]
     /// The options the server applied, after the tier clamps.
     public var applied: AppliedOptions?
-    /// The location (or the resolved point) forecast.
-    public var location: LocationReference
+    /// The location (or the resolved point) forecast, with the elevation the series is served at.
+    public var location: ForecastLocation
     /// The model run and the models blended.
     public var modelRun: ModelRun
     /// The unit system every value in this response is in.
     public var units: UnitSystem
-    /// The hourly series, the daily summaries and the snow outlook.
-    public var forecast: ForecastData
-    /// Forecasts at the location's other named elevations (with `elevations`).
-    public var elevationForecasts: [ElevationForecast]?
+    /// (JSON `forecast`) The hourly series, the daily summaries and the snow outlook.
+    public var series: ForecastData
+    /// (JSON `elevation_forecasts`) Forecasts at the location's other named elevations (with `elevations`).
+    public var elevations: [ElevationForecast]?
     /// Whether the live nowcast layer is blended in.
     public var isNowcastApplied: Bool
     /// The live nowcast sources this response was built without, because
@@ -50,6 +50,10 @@ public struct ForecastResponse: Sendable, Hashable {
     public var current: CurrentConditions?
     /// The data sources this response drew on and the credit to carry with it.
     public var attribution: ResponseAttribution
+    /// The avalanche center's current danger rating for the zone the location is in.
+    public var avalanche: AvalancheForecast?
+    /// The snow on the ground at the location's point, from the snowpack model.
+    public var snowOnGround: SnowOnGround?
 
     /// Creates a forecast; the SDK builds these from responses, and tests or
     /// previews can build their own.
@@ -58,11 +62,11 @@ public struct ForecastResponse: Sendable, Hashable {
         probabilities: [ProbabilityResult] = [],
         windowTotals: [WindowTotal] = [],
         applied: AppliedOptions? = nil,
-        location: LocationReference,
+        location: ForecastLocation,
         modelRun: ModelRun,
         units: UnitSystem,
-        forecast: ForecastData,
-        elevationForecasts: [ElevationForecast]? = nil,
+        series: ForecastData,
+        elevations: [ElevationForecast]? = nil,
         isNowcastApplied: Bool,
         nowcastUnavailable: [NowcastSource]? = nil,
         membersView: MembersView? = nil,
@@ -70,7 +74,9 @@ public struct ForecastResponse: Sendable, Hashable {
         nearestSensors: [NearestSensor]? = nil,
         point: PointInfo? = nil,
         current: CurrentConditions? = nil,
-        attribution: ResponseAttribution
+        attribution: ResponseAttribution,
+        avalanche: AvalancheForecast? = nil,
+        snowOnGround: SnowOnGround? = nil
     ) {
         self.thresholds = thresholds
         self.probabilities = probabilities
@@ -79,8 +85,8 @@ public struct ForecastResponse: Sendable, Hashable {
         self.location = location
         self.modelRun = modelRun
         self.units = units
-        self.forecast = forecast
-        self.elevationForecasts = elevationForecasts
+        self.series = series
+        self.elevations = elevations
         self.isNowcastApplied = isNowcastApplied
         self.nowcastUnavailable = nowcastUnavailable
         self.membersView = membersView
@@ -89,6 +95,8 @@ public struct ForecastResponse: Sendable, Hashable {
         self.point = point
         self.current = current
         self.attribution = attribution
+        self.avalanche = avalanche
+        self.snowOnGround = snowOnGround
     }
 
     /// The answer to `query`, matched by its canonical term (the threshold
@@ -116,8 +124,8 @@ extension ForecastResponse: Codable {
         case location
         case modelRun = "model_run"
         case units
-        case forecast
-        case elevationForecasts = "elevation_forecasts"
+        case series = "forecast"
+        case elevations = "elevation_forecasts"
         case isNowcastApplied = "nowcast_applied"
         case nowcastUnavailable = "nowcast_unavailable"
         case membersView = "members_view"
@@ -126,6 +134,8 @@ extension ForecastResponse: Codable {
         case point
         case current
         case attribution
+        case avalanche
+        case snowOnGround = "snow_on_ground"
     }
 
     /// Decodes a forecast; absent `probabilities` and `window_totals` are empty.
@@ -137,12 +147,11 @@ extension ForecastResponse: Codable {
         windowTotals =
             try container.decodeIfPresent([WindowTotal].self, forKey: .windowTotals) ?? []
         applied = try container.decodeIfPresent(AppliedOptions.self, forKey: .applied)
-        location = try container.decode(LocationReference.self, forKey: .location)
+        location = try container.decode(ForecastLocation.self, forKey: .location)
         modelRun = try container.decode(ModelRun.self, forKey: .modelRun)
         units = try container.decode(UnitSystem.self, forKey: .units)
-        forecast = try container.decode(ForecastData.self, forKey: .forecast)
-        elevationForecasts = try container.decodeIfPresent(
-            [ElevationForecast].self, forKey: .elevationForecasts)
+        series = try container.decode(ForecastData.self, forKey: .series)
+        elevations = try container.decodeIfPresent([ElevationForecast].self, forKey: .elevations)
         isNowcastApplied = try container.decode(Bool.self, forKey: .isNowcastApplied)
         nowcastUnavailable = try container.decodeIfPresent(
             [NowcastSource].self, forKey: .nowcastUnavailable)
@@ -153,6 +162,8 @@ extension ForecastResponse: Codable {
         point = try container.decodeIfPresent(PointInfo.self, forKey: .point)
         current = try container.decodeIfPresent(CurrentConditions.self, forKey: .current)
         attribution = try container.decode(ResponseAttribution.self, forKey: .attribution)
+        avalanche = try container.decodeIfPresent(AvalancheForecast.self, forKey: .avalanche)
+        snowOnGround = try container.decodeIfPresent(SnowOnGround.self, forKey: .snowOnGround)
     }
 
     /// Encodes the forecast in the API's JSON shape.
@@ -165,8 +176,8 @@ extension ForecastResponse: Codable {
         try container.encode(location, forKey: .location)
         try container.encode(modelRun, forKey: .modelRun)
         try container.encode(units, forKey: .units)
-        try container.encode(forecast, forKey: .forecast)
-        try container.encodeIfPresent(elevationForecasts, forKey: .elevationForecasts)
+        try container.encode(series, forKey: .series)
+        try container.encodeIfPresent(elevations, forKey: .elevations)
         try container.encode(isNowcastApplied, forKey: .isNowcastApplied)
         try container.encodeIfPresent(nowcastUnavailable, forKey: .nowcastUnavailable)
         try container.encodeIfPresent(membersView, forKey: .membersView)
@@ -175,6 +186,8 @@ extension ForecastResponse: Codable {
         try container.encodeIfPresent(point, forKey: .point)
         try container.encodeIfPresent(current, forKey: .current)
         try container.encode(attribution, forKey: .attribution)
+        try container.encodeIfPresent(avalanche, forKey: .avalanche)
+        try container.encodeIfPresent(snowOnGround, forKey: .snowOnGround)
     }
 }
 

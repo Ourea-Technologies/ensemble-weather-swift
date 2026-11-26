@@ -4,7 +4,7 @@
 
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()
+let client = Client()
 
 let results = try await client.searchLocations("hood meadows")
 for hit in results.items {

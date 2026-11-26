@@ -16,7 +16,7 @@ let freeze = ProbabilityQuery.temperature(atMost: .fahrenheit(32), in: .hours(48
 let forecast = try await client.forecast(
     for: "or/mt-hood-meadows", options: ForecastOptions(probabilities: [freeze]))
 let answer = forecast.probability(for: freeze)
-print(answer?.probability as Any, answer?.members as Any)
+print(answer?.value as Any, answer?.members as Any)
 ```
 
 Each ``ProbabilityResult`` carries its reference class: variable, comparison,

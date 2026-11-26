@@ -26,6 +26,10 @@ struct MiniYAMLTests {
             h: plain text
               continued
             '200': ok
+            i:
+            - - 1
+              - null
+            - - 2
             """
         let value = try MiniYAML.parse(yaml)
         #expect(value["a"] == .number(1))
@@ -38,6 +42,7 @@ struct MiniYAMLTests {
         #expect(value["g"] == .object([:]))
         #expect(value["h"] == .string("plain text continued"))
         #expect(value["200"] == .string("ok"))
+        #expect(value["i"] == .array([.array([.number(1), .null]), .array([.number(2)])]))
     }
 
     /// Writes the parsed spec as JSON when `OUREA_DUMP_SPEC_JSON` names a

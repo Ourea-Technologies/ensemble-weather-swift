@@ -9,31 +9,31 @@ public struct ProbabilityThresholds: Sendable, Hashable, Codable {
     public var hourlyPrecipitation: Double
     /// The threshold of `ensemble.snowfall.probability`, 0.254 mm.
     public var hourlySnowfall: Double
-    /// The threshold of `daily[].precipitation_probability`, a day total of 2.5 mm.
-    public var dailyPrecipitationProbability: Double
-    /// The threshold of `daily[].precipitation_occurrence_probability`, 1.0 mm, also the "if wet" condition.
-    public var dailyPrecipitationOccurrenceProbability: Double
-    /// The threshold of `daily[].snow_probability`, a day snowfall of 2.5 mm.
-    public var dailySnowProbability: Double
+    /// (JSON `daily_precipitation_probability`) The threshold of `daily[].precipitation_probability`, a day total of 2.5 mm.
+    public var dailyPrecipitation: Double
+    /// (JSON `daily_precipitation_occurrence_probability`) The threshold of `daily[].precipitation_occurrence_probability`, 1.0 mm, also the "if wet" condition.
+    public var dailyPrecipitationOccurrence: Double
+    /// (JSON `daily_snow_probability`) The threshold of `daily[].snow_probability`, a day snowfall of 2.5 mm.
+    public var dailySnow: Double
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        hourlyPrecipitation: Double, hourlySnowfall: Double, dailyPrecipitationProbability: Double,
-        dailyPrecipitationOccurrenceProbability: Double, dailySnowProbability: Double
+        hourlyPrecipitation: Double, hourlySnowfall: Double, dailyPrecipitation: Double,
+        dailyPrecipitationOccurrence: Double, dailySnow: Double
     ) {
         self.hourlyPrecipitation = hourlyPrecipitation
         self.hourlySnowfall = hourlySnowfall
-        self.dailyPrecipitationProbability = dailyPrecipitationProbability
-        self.dailyPrecipitationOccurrenceProbability = dailyPrecipitationOccurrenceProbability
-        self.dailySnowProbability = dailySnowProbability
+        self.dailyPrecipitation = dailyPrecipitation
+        self.dailyPrecipitationOccurrence = dailyPrecipitationOccurrence
+        self.dailySnow = dailySnow
     }
 
     enum CodingKeys: String, CodingKey {
         case hourlyPrecipitation = "hourly_precipitation"
         case hourlySnowfall = "hourly_snowfall"
-        case dailyPrecipitationProbability = "daily_precipitation_probability"
-        case dailyPrecipitationOccurrenceProbability = "daily_precipitation_occurrence_probability"
-        case dailySnowProbability = "daily_snow_probability"
+        case dailyPrecipitation = "daily_precipitation_probability"
+        case dailyPrecipitationOccurrence = "daily_precipitation_occurrence_probability"
+        case dailySnow = "daily_snow_probability"
     }
 }
 
@@ -121,18 +121,29 @@ public struct ModelEntry: Sendable, Hashable, Codable {
     public var cycle: Date?
     /// How many of its members the forecast carries (in `model_run`); omitted in `/runs` `served`.
     public var members: Int?
+    /// The `member_id`s of this model's members served for display only, on a response that asks for members: `rrfs` 1..5 are the RRFS ensemble's m001..m005, beside the deterministic run (0).
+    public var displayMembers: [Int]?
+    /// How the snowfall and the running snowfall of `display_members` are made; present exactly when `display_members` is.
+    public var displayMembersSnowfall: String?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(id: String, cycle: Date? = nil, members: Int? = nil) {
+    public init(
+        id: String, cycle: Date? = nil, members: Int? = nil, displayMembers: [Int]? = nil,
+        displayMembersSnowfall: String? = nil
+    ) {
         self.id = id
         self.cycle = cycle
         self.members = members
+        self.displayMembers = displayMembers
+        self.displayMembersSnowfall = displayMembersSnowfall
     }
 
     enum CodingKeys: String, CodingKey {
         case id
         case cycle
         case members
+        case displayMembers = "display_members"
+        case displayMembersSnowfall = "display_members_snowfall"
     }
 }
 
@@ -148,17 +159,25 @@ public struct ForecastData: Sendable, Hashable, Codable {
     public var daily: [DailyForecast]?
     /// Rolling snow-accumulation summary for common UI windows.
     public var snowOutlook: SnowOutlook?
+    /// Rolling LIQUID totals over the windows of `snow_outlook` (24 h, 48 h, 72 h, 7 days), with their ranges.
+    public var precipitationOutlook: PrecipOutlook?
+    /// Present only with `members=plume`, which serves it INSTEAD of `timeseries`, `daily`, `snow_outlook` and `precipitation_outlook`.
+    public var plume: MemberPlume?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         maxHours: Int, intervalHours: Int, timeseries: [TimeSeriesPoint]? = nil,
-        daily: [DailyForecast]? = nil, snowOutlook: SnowOutlook? = nil
+        daily: [DailyForecast]? = nil, snowOutlook: SnowOutlook? = nil,
+        precipitationOutlook: PrecipOutlook? = nil,
+        plume: MemberPlume? = nil
     ) {
         self.maxHours = maxHours
         self.intervalHours = intervalHours
         self.timeseries = timeseries
         self.daily = daily
         self.snowOutlook = snowOutlook
+        self.precipitationOutlook = precipitationOutlook
+        self.plume = plume
     }
 
     enum CodingKeys: String, CodingKey {
@@ -167,6 +186,8 @@ public struct ForecastData: Sendable, Hashable, Codable {
         case timeseries
         case daily
         case snowOutlook = "snow_outlook"
+        case precipitationOutlook = "precipitation_outlook"
+        case plume
     }
 }
 
@@ -182,17 +203,21 @@ public struct SnowOutlook: Sendable, Hashable, Codable {
     public var overnight4pmTo9am: Double?
     /// Quantiles.
     public var quantiles: SnowOutlookQuantiles?
+    /// Sum of the hourly snowfall means over the first 72 h (the favorites' "next 3 days"); `null` when not covered.
+    public var next72Hours: Double?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         next24Hours: Double? = nil, next48Hours: Double? = nil, next7Days: Double? = nil,
-        overnight4pmTo9am: Double? = nil, quantiles: SnowOutlookQuantiles? = nil
+        overnight4pmTo9am: Double? = nil, quantiles: SnowOutlookQuantiles? = nil,
+        next72Hours: Double? = nil
     ) {
         self.next24Hours = next24Hours
         self.next48Hours = next48Hours
         self.next7Days = next7Days
         self.overnight4pmTo9am = overnight4pmTo9am
         self.quantiles = quantiles
+        self.next72Hours = next72Hours
     }
 
     enum CodingKeys: String, CodingKey {
@@ -201,6 +226,7 @@ public struct SnowOutlook: Sendable, Hashable, Codable {
         case next7Days = "next_7d"
         case overnight4pmTo9am = "overnight_4pm_9am"
         case quantiles
+        case next72Hours = "next_72h"
     }
 }
 
@@ -212,20 +238,25 @@ public struct SnowOutlookQuantiles: Sendable, Hashable, Codable {
     public var next48Hours: Quantiles?
     /// Next 7d.
     public var next7Days: Quantiles?
+    /// Built as the other windows are.
+    public var next72Hours: Quantiles?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        next24Hours: Quantiles? = nil, next48Hours: Quantiles? = nil, next7Days: Quantiles? = nil
+        next24Hours: Quantiles? = nil, next48Hours: Quantiles? = nil, next7Days: Quantiles? = nil,
+        next72Hours: Quantiles? = nil
     ) {
         self.next24Hours = next24Hours
         self.next48Hours = next48Hours
         self.next7Days = next7Days
+        self.next72Hours = next72Hours
     }
 
     enum CodingKeys: String, CodingKey {
         case next24Hours = "next_24h"
         case next48Hours = "next_48h"
         case next7Days = "next_7d"
+        case next72Hours = "next_72h"
     }
 }
 

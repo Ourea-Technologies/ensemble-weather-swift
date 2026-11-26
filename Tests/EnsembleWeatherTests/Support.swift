@@ -62,8 +62,8 @@ final class NoticeCollector: Sendable {
 func testConfiguration(
     apiKey: String? = nil, transport: any HTTPTransport, clock: FakeClock = FakeClock(),
     notices: NoticeCollector = NoticeCollector()
-) -> EnsembleWeatherClient.Configuration {
-    var configuration = EnsembleWeatherClient.Configuration(apiKey: apiKey, environment: [:])
+) -> Client.Configuration {
+    var configuration = Client.Configuration(apiKey: apiKey, environment: [:])
     configuration.transport = transport
     configuration.clock = clock
     configuration.jitter = { 1.0 }
@@ -150,7 +150,8 @@ extension JSONValue {
     }
 }
 
-/// Compares JSON values numerically, treating `null` and absence alike.
+/// Compares JSON values numerically, treating `null` and absence alike and timestamps as
+/// instants (to the millisecond).
 func jsonEquivalent(_ lhs: JSONValue?, _ rhs: JSONValue?) -> Bool {
     switch (lhs, rhs) {
     case (nil, nil), (nil, .null?), (.null?, nil), (.null?, .null?): return true
@@ -160,6 +161,11 @@ func jsonEquivalent(_ lhs: JSONValue?, _ rhs: JSONValue?) -> Bool {
         return true
     case (.array(let a)?, .array(let b)?):
         return a.count == b.count && zip(a, b).allSatisfy { jsonEquivalent($0, $1) }
+    case (.string(let a)?, .string(let b)?) where a != b:
+        // A timestamp is an instant; Foundation writes it to the millisecond.
+        guard let lhs = JSONCoding.parseTimestamp(a), let rhs = JSONCoding.parseTimestamp(b)
+        else { return false }
+        return abs(lhs.timeIntervalSince(rhs)) < 0.001
     default: return lhs == rhs
     }
 }

@@ -35,7 +35,7 @@ public struct LocationID: Sendable, Hashable, ExpressibleByStringLiteral, Custom
     public var description: String { "\(state)/\(slug)" }
 
     /// The two path segments, state canonicalised, or a usage error.
-    func pathSegments() throws(EnsembleWeatherError) -> [String] {
+    func pathSegments() throws(OureaError) -> [String] {
         guard !state.isEmpty, !slug.isEmpty else {
             throw .usage(
                 "A location is \"state/slug\", for example \"or/mt-hood-meadows\"; got \"\(self)\"."

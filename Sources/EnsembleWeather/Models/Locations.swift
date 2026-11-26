@@ -73,13 +73,13 @@ public struct LocationSummary: Sendable, Hashable, Codable {
     /// Free-text blurb from the catalog (when present).
     public var description: String?
     /// The location's elevation points (e.g., ski area base / mid / summit), the primary first.
-    public var elevations: [LocationElevation]?
+    public var elevations: [ElevationSummary]?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         slug: String, state: String, name: String, latitude: Double, longitude: Double,
         elevationMeters: Double, type: LocationType, timezone: String, county: String,
-        description: String? = nil, elevations: [LocationElevation]? = nil
+        description: String? = nil, elevations: [ElevationSummary]? = nil
     ) {
         self.slug = slug
         self.state = state
@@ -109,53 +109,29 @@ public struct LocationSummary: Sendable, Hashable, Codable {
     }
 }
 
-/// The location's elevation points (e.g., ski area base / mid / summit), the primary first.
-public struct LocationElevation: Sendable, Hashable, Codable {
-    /// Name.
-    public var name: String
-    /// In the caller's length units (m, ft), to 0.1.
-    public var elevation: Double
-    /// Present (true) on the primary only.
-    public var isDefault: Bool?
-
-    /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(name: String, elevation: Double, isDefault: Bool? = nil) {
-        self.name = name
-        self.elevation = elevation
-        self.isDefault = isDefault
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case name
-        case elevation
-        case isDefault = "default"
-    }
-}
-
 /// One page of forecast locations, nationwide or in one state.
 public struct LocationPage: Sendable, Hashable, Codable {
     /// Display label for the scope: `Oregon`, `Washington`, `California` for a single-state query, or `all` when hitting `/api/v1/locations`.
     public var state: String
     /// Count.
     public var count: Int
-    /// Locations.
-    public var locations: [LocationSummary]
+    /// (JSON `locations`) Locations.
+    public var items: [LocationSummary]
     /// Present only on a paged response (`limit` given) that has more rows after it.
     public var nextCursor: String?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(state: String, count: Int, locations: [LocationSummary], nextCursor: String? = nil)
-    {
+    public init(state: String, count: Int, items: [LocationSummary], nextCursor: String? = nil) {
         self.state = state
         self.count = count
-        self.locations = locations
+        self.items = items
         self.nextCursor = nextCursor
     }
 
     enum CodingKeys: String, CodingKey {
         case state
         case count
-        case locations
+        case items = "locations"
         case nextCursor = "next_cursor"
     }
 }
@@ -183,7 +159,7 @@ public struct NearbyLocation: Sendable, Hashable, Codable {
     /// Free-text blurb from the catalog (when present).
     public var description: String?
     /// The location's elevation points (e.g., ski area base / mid / summit), the primary first.
-    public var elevations: [LocationElevation]?
+    public var elevations: [ElevationSummary]?
     /// Great-circle distance from the location, km.
     public var distanceKilometers: Double
 
@@ -191,7 +167,7 @@ public struct NearbyLocation: Sendable, Hashable, Codable {
     public init(
         slug: String, state: String, name: String, latitude: Double, longitude: Double,
         elevationMeters: Double, type: LocationType, timezone: String, county: String,
-        description: String? = nil, elevations: [LocationElevation]? = nil,
+        description: String? = nil, elevations: [ElevationSummary]? = nil,
         distanceKilometers: Double
     ) {
         self.slug = slug
@@ -226,30 +202,30 @@ public struct NearbyLocation: Sendable, Hashable, Codable {
 
 /// The locations nearest a named location.
 public struct NearbyLocations: Sendable, Hashable, Codable {
-    /// Location.
-    public var location: LocationSummary
+    /// (JSON `location`) Location.
+    public var origin: LocationSummary
     /// The radius applied, after the cap.
     public var radiusKilometers: Double
     /// Neighbours in this response (the location itself is not counted).
     public var count: Int
-    /// Nearest first.
-    public var locations: [NearbyLocation]
+    /// (JSON `locations`) Nearest first.
+    public var items: [NearbyLocation]
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        location: LocationSummary, radiusKilometers: Double, count: Int, locations: [NearbyLocation]
+        origin: LocationSummary, radiusKilometers: Double, count: Int, items: [NearbyLocation]
     ) {
-        self.location = location
+        self.origin = origin
         self.radiusKilometers = radiusKilometers
         self.count = count
-        self.locations = locations
+        self.items = items
     }
 
     enum CodingKeys: String, CodingKey {
-        case location
+        case origin = "location"
         case radiusKilometers = "radius_km"
         case count
-        case locations
+        case items = "locations"
     }
 }
 
@@ -263,19 +239,19 @@ public struct NearbyPointLocations: Sendable, Hashable, Codable {
     public var radiusKilometers: Double
     /// Count.
     public var count: Int
-    /// Locations.
-    public var locations: [NearbyLocation]
+    /// (JSON `locations`) Locations.
+    public var items: [NearbyLocation]
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         latitude: Double, longitude: Double, radiusKilometers: Double, count: Int,
-        locations: [NearbyLocation]
+        items: [NearbyLocation]
     ) {
         self.latitude = latitude
         self.longitude = longitude
         self.radiusKilometers = radiusKilometers
         self.count = count
-        self.locations = locations
+        self.items = items
     }
 
     enum CodingKeys: String, CodingKey {
@@ -283,7 +259,7 @@ public struct NearbyPointLocations: Sendable, Hashable, Codable {
         case longitude = "lon"
         case radiusKilometers = "radius_km"
         case count
-        case locations
+        case items = "locations"
     }
 }
 
@@ -309,11 +285,14 @@ public struct SearchHit: Sendable, Hashable, Codable {
     public var timezone: String
     /// County.
     public var county: String
+    /// With `sort=<metric>` only, the place's value as `GET /api/v1/explore` ranks it (its own point); `null` where it has none.
+    public var explore: ExploreValue?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         key: String, slug: String, state: String, name: String, latitude: Double, longitude: Double,
-        elevationMeters: Double, type: LocationType, timezone: String, county: String
+        elevationMeters: Double, type: LocationType, timezone: String, county: String,
+        explore: ExploreValue? = nil
     ) {
         self.key = key
         self.slug = slug
@@ -325,6 +304,7 @@ public struct SearchHit: Sendable, Hashable, Codable {
         self.type = type
         self.timezone = timezone
         self.county = county
+        self.explore = explore
     }
 
     enum CodingKeys: String, CodingKey {
@@ -338,6 +318,7 @@ public struct SearchHit: Sendable, Hashable, Codable {
         case type
         case timezone
         case county
+        case explore
     }
 }
 

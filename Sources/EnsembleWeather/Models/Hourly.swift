@@ -12,7 +12,7 @@ public struct TimeSeriesPoint: Sendable, Hashable, Codable {
     /// Whether this hour is nighttime at the forecast location.
     public var isNight: Bool
     /// A stable machine code to switch on -- the display text (`condition_text`) lowercased, each run of other characters one `_` (`partly_cloudy`, `rain_snow_mix_likely`).
-    public var condition: WeatherCondition
+    public var condition: Condition
     /// Human-readable weather condition for the hour, day/night aware.
     public var conditionText: String
     /// Icon hint (prefixed with night_ for nighttime).
@@ -39,16 +39,31 @@ public struct TimeSeriesPoint: Sendable, Hashable, Codable {
     public var cumulativePrecipitation: Double?
     /// The headline's running snowfall total, as `cumulative_precipitation` over `ensemble.snowfall.mean`; present exactly when the hour serves `ensemble.snowfall`.
     public var cumulativeSnowfall: Double?
+    /// Whether precipitation was MEASURED in this hour: MRMS published a radar accumulation for this clock hour (the whole hour just ended, the quarters published so far of the hour in progress, or an older hour whose measurement is kept) and it ...
+    public var isMeasured: Bool?
+    /// The hour's snow character.
+    public var snowCharacter: SnowCharacter?
+    /// MembersSpread.
+    public var membersSpread: MembersSpread?
+    /// The members' 6-HOUR totals ending at this hour -- per quantity (`precipitation`, `snowfall`), the Quantiles of every member's total over `(valid_time - 6 h, valid_time]`: the violin of a Utah-style plume, one per 6 h period.
+    public var members6Hours: MembersCumulative?
+    /// PrecipitationByType.
+    public var precipitationByType: PrecipitationByType?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        validTime: Date, leadTimeHours: Int, isNight: Bool, condition: WeatherCondition,
+        validTime: Date, leadTimeHours: Int, isNight: Bool, condition: Condition,
         conditionText: String, conditionIcon: ConditionIcon, isGustNotable: Bool? = nil,
         precipitationType: PrecipType? = nil, inversion: InversionInfo? = nil,
         freezingLevel: FreezingLevel? = nil, ensemble: EnsembleStats,
         provenance: HourProvenance? = nil, modelMeans: [ModelMean]? = nil,
         members: [ModelMembers]? = nil, membersCumulative: MembersCumulative? = nil,
-        cumulativePrecipitation: Double? = nil, cumulativeSnowfall: Double? = nil
+        cumulativePrecipitation: Double? = nil, cumulativeSnowfall: Double? = nil,
+        isMeasured: Bool? = nil,
+        snowCharacter: SnowCharacter? = nil,
+        membersSpread: MembersSpread? = nil,
+        members6Hours: MembersCumulative? = nil,
+        precipitationByType: PrecipitationByType? = nil
     ) {
         self.validTime = validTime
         self.leadTimeHours = leadTimeHours
@@ -67,6 +82,11 @@ public struct TimeSeriesPoint: Sendable, Hashable, Codable {
         self.membersCumulative = membersCumulative
         self.cumulativePrecipitation = cumulativePrecipitation
         self.cumulativeSnowfall = cumulativeSnowfall
+        self.isMeasured = isMeasured
+        self.snowCharacter = snowCharacter
+        self.membersSpread = membersSpread
+        self.members6Hours = members6Hours
+        self.precipitationByType = precipitationByType
     }
 
     enum CodingKeys: String, CodingKey {
@@ -87,6 +107,11 @@ public struct TimeSeriesPoint: Sendable, Hashable, Codable {
         case membersCumulative = "members_cumulative"
         case cumulativePrecipitation = "cumulative_precipitation"
         case cumulativeSnowfall = "cumulative_snowfall"
+        case isMeasured = "measured"
+        case snowCharacter = "snow_character"
+        case membersSpread = "members_spread"
+        case members6Hours = "members_6h"
+        case precipitationByType = "precipitation_by_type"
     }
 }
 
@@ -94,25 +119,25 @@ public struct TimeSeriesPoint: Sendable, Hashable, Codable {
 public struct ModelMembers: Sendable, Hashable, Codable {
     /// Id.
     public var id: String
-    /// Members.
-    public var members: [MemberForecast]
+    /// (JSON `members`) Members.
+    public var items: [MemberForecast]
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(id: String, members: [MemberForecast]) {
+    public init(id: String, items: [MemberForecast]) {
         self.id = id
-        self.members = members
+        self.items = items
     }
 
     enum CodingKeys: String, CodingKey {
         case id
-        case members
+        case items = "members"
     }
 }
 
 /// One ensemble member's values at a single forecast hour.
 public struct MemberForecast: Sendable, Hashable, Codable {
-    /// The member's position on its model's ensemble axis, from 0.
-    public var memberID: Int
+    /// (JSON `member_id`) The member's position on its model's ensemble axis, from 0.
+    public var id: Int
     /// `null` when this member published nothing at this hour.
     public var temperature: Double?
     /// `null` when this member published nothing at this hour.
@@ -133,15 +158,18 @@ public struct MemberForecast: Sendable, Hashable, Codable {
     public var cumulativePrecipitation: Double?
     /// This member's running snowfall total (mm / in), by the same window and share rule as `cumulative_precipitation` over its `snowfall`.
     public var cumulativeSnowfall: Double?
+    /// This member's snow level on the NWS scale (the height of the 0.5 C wet-bulb; see `EnsembleStats.snow_level_wet_bulb`): its `snow_level` raised by the same fixed 275 m (901 ft), a level at `0` (snow to sea level) left at `0`.
+    public var snowLevelWetBulb: Double?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        memberID: Int, temperature: Double? = nil, precipitation: Double? = nil,
+        id: Int, temperature: Double? = nil, precipitation: Double? = nil,
         precipitationHours: Int? = nil, windSpeed: Double? = nil, windDirection: Double? = nil,
         snowLevel: Double? = nil, snowToLiquidRatio: Double? = nil, snowfall: Double? = nil,
-        cumulativePrecipitation: Double? = nil, cumulativeSnowfall: Double? = nil
+        cumulativePrecipitation: Double? = nil, cumulativeSnowfall: Double? = nil,
+        snowLevelWetBulb: Double? = nil
     ) {
-        self.memberID = memberID
+        self.id = id
         self.temperature = temperature
         self.precipitation = precipitation
         self.precipitationHours = precipitationHours
@@ -152,10 +180,11 @@ public struct MemberForecast: Sendable, Hashable, Codable {
         self.snowfall = snowfall
         self.cumulativePrecipitation = cumulativePrecipitation
         self.cumulativeSnowfall = cumulativeSnowfall
+        self.snowLevelWetBulb = snowLevelWetBulb
     }
 
     enum CodingKeys: String, CodingKey {
-        case memberID = "member_id"
+        case id = "member_id"
         case temperature
         case precipitation
         case precipitationHours = "precipitation_hours"
@@ -166,6 +195,7 @@ public struct MemberForecast: Sendable, Hashable, Codable {
         case snowfall
         case cumulativePrecipitation = "cumulative_precipitation"
         case cumulativeSnowfall = "cumulative_snowfall"
+        case snowLevelWetBulb = "snow_level_wet_bulb"
     }
 }
 
@@ -208,6 +238,8 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
     public var cape: Quantiles?
     /// Relative humidity, percent 0–100 in every unit system, computed like `feels_like`.
     public var relativeHumidity: Quantiles?
+    /// The snow level on the NWS scale (m MSL, or ft with `units=imperial`): the height of the 0.5 C wet-bulb, where falling snow starts to mix with rain.
+    public var snowLevelWetBulb: Quantiles?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
@@ -217,7 +249,8 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
         snowToLiquidRatio: Quantiles? = nil, snowfall: Quantiles? = nil,
         cloudCover: Quantiles? = nil, skinTemperature: Quantiles? = nil,
         meanSeaLevelPressure: Quantiles? = nil, cape: Quantiles? = nil,
-        relativeHumidity: Quantiles? = nil
+        relativeHumidity: Quantiles? = nil,
+        snowLevelWetBulb: Quantiles? = nil
     ) {
         self.temperature = temperature
         self.feelsLike = feelsLike
@@ -234,6 +267,7 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
         self.meanSeaLevelPressure = meanSeaLevelPressure
         self.cape = cape
         self.relativeHumidity = relativeHumidity
+        self.snowLevelWetBulb = snowLevelWetBulb
     }
 
     enum CodingKeys: String, CodingKey {
@@ -252,6 +286,7 @@ public struct EnsembleStats: Sendable, Hashable, Codable {
         case meanSeaLevelPressure = "mslp"
         case cape
         case relativeHumidity = "relative_humidity"
+        case snowLevelWetBulb = "snow_level_wet_bulb"
     }
 }
 
@@ -278,13 +313,17 @@ public struct ModelMean: Sendable, Hashable, Codable {
     public var snowfall: Quantiles?
     /// `true` when this model did not publish at this lead and the stats above were interpolated from its two bracketing native steps.
     public var isInterpolated: Bool?
+    /// The model's own snow level on the NWS scale (the height of the 0.5 C wet-bulb), as `EnsembleStats.snow_level_wet_bulb` is the blend's: its `snow_level` with every quantile raised by 275 m (901 ft), a quantile at `0` left at `0`.
+    public var snowLevelWetBulb: Quantiles?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         id: String, temperature: Quantiles? = nil, dewpoint: Quantiles? = nil,
         precipitation: Quantiles? = nil, windSpeed: Quantiles? = nil,
         windDirection: CircularStats? = nil, snowLevel: Quantiles? = nil,
-        snowToLiquidRatio: Quantiles? = nil, snowfall: Quantiles? = nil, isInterpolated: Bool? = nil
+        snowToLiquidRatio: Quantiles? = nil, snowfall: Quantiles? = nil,
+        isInterpolated: Bool? = nil,
+        snowLevelWetBulb: Quantiles? = nil
     ) {
         self.id = id
         self.temperature = temperature
@@ -296,6 +335,7 @@ public struct ModelMean: Sendable, Hashable, Codable {
         self.snowToLiquidRatio = snowToLiquidRatio
         self.snowfall = snowfall
         self.isInterpolated = isInterpolated
+        self.snowLevelWetBulb = snowLevelWetBulb
     }
 
     enum CodingKeys: String, CodingKey {
@@ -309,6 +349,7 @@ public struct ModelMean: Sendable, Hashable, Codable {
         case snowToLiquidRatio = "slr"
         case snowfall
         case isInterpolated = "interpolated"
+        case snowLevelWetBulb = "snow_level_wet_bulb"
     }
 }
 

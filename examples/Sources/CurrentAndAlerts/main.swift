@@ -4,20 +4,20 @@
 
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()
+let client = Client()
 
-let now = try await client.currentConditions(for: "or/mt-hood-meadows")
-if let current = now.current {
+let conditions = try await client.currentConditions(for: "or/mt-hood-meadows")
+if let now = conditions.now {
     print(
-        "\(now.location.name) now: \(current.conditionText), \(current.temperature)\(now.units.temperatureUnit), "
-            + "wind \(current.windSpeed) \(now.units.speedUnit) (from \(current.source.rawValue))")
+        "\(conditions.location.name) now: \(now.text), \(now.temperature)\(conditions.units.temperatureUnit), "
+            + "wind \(now.windSpeed) \(conditions.units.speedUnit) (from \(now.source.rawValue))")
 } else {
-    print("No current reading for \(now.location.name) yet.")
+    print("No current reading for \(conditions.location.name) yet.")
 }
-print("\(now.sensorCount) sensors nearby")
+print("\(conditions.sensorCount) sensors nearby")
 
 let alerts = try await client.alerts(for: "or/mt-hood-meadows")
-if alerts.alerts.isEmpty { print("No active alerts.") }
-for alert in alerts.alerts {
+if alerts.items.isEmpty { print("No active alerts.") }
+for alert in alerts.items {
     print("\(alert.severity): \(alert.headline) (until \(alert.expires))")
 }

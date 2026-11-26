@@ -10,7 +10,7 @@ import PackageDescription
 
 let examples = [
     "Quickstart", "PointForecast", "ChanceOfSnow", "StormTotal", "SearchAndCatalog",
-    "CurrentAndAlerts", "ErrorHandling", "Units",
+    "CurrentAndAlerts", "ErrorHandling", "Units", "SnowReport", "Maps",
 ]
 
 let package = Package(

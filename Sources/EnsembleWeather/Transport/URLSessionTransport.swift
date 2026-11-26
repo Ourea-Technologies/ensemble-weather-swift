@@ -22,7 +22,7 @@ public final class URLSessionTransport: HTTPTransport {
     ///
     /// - Parameter maximumBodyBytes: The largest response body accepted; a
     ///   larger body ends the request with an
-    ///   ``EnsembleWeatherError/Category/invalidResponse`` error instead of
+    ///   ``OureaError/Category/invalidResponse`` error instead of
     ///   using unbounded memory. At most 64 MiB.
     public convenience init(maximumBodyBytes: Int = URLSessionTransport.defaultMaximumBodyBytes) {
         self.init(configuration: .ephemeral, maximumBodyBytes: maximumBodyBytes)
@@ -132,7 +132,7 @@ final class SessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendab
         }
         if entry.overflowed {
             entry.continuation.resume(
-                throwing: EnsembleWeatherError.invalidResponse(
+                throwing: OureaError.invalidResponse(
                     "The response body is larger than the \(maximumBodyBytes)-byte bound.",
                     status: entry.response?.statusCode))
         } else if let error {

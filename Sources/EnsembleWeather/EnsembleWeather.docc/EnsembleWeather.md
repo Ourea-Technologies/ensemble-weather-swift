@@ -12,13 +12,13 @@ compute statistics yourself.
 ```swift
 import EnsembleWeather
 
-let client = EnsembleWeatherClient()   // anonymous, or OUREA_API_KEY
+let client = Client()   // anonymous, or OUREA_API_KEY
 let sixInches = ProbabilityQuery.snowfall(atLeast: .inches(6))
 let forecast = try await client.forecast(
     for: "or/mt-hood-meadows",
     options: ForecastOptions(probabilities: [sixInches]))
 
-if let chance = forecast.probability(for: sixInches)?.probability {
+if let chance = forecast.probability(for: sixInches)?.value {
     print("Chance of 6 in of snow in 24 h: \(chance.formatted(.percent))")
 }
 ```
@@ -32,8 +32,8 @@ The SDK targets API contract v1. Guides live at
 
 - <doc:GettingStarted>
 - <doc:Probabilities>
-- ``EnsembleWeatherClient``
-- ``EnsembleWeatherClient/Configuration``
+- ``Client``
+- ``Client/Configuration``
 - ``APIResponse``
 - ``ResponseMetadata``
 
@@ -60,6 +60,43 @@ The SDK targets API contract v1. Guides live at
 - ``EnsembleStats``
 - ``CircularStats``
 - ``Sector``
+- ``MemberSelection``
+- ``MemberPlume``
+- ``ForecastLocation``
+- ``ElevationSummary``
+- ``SnowOnGround``
+- ``AvalancheForecast``
+
+### Current conditions and mountain passes
+
+- ``CurrentConditionsResponse``
+- ``CurrentConditions``
+- ``PlaceSummary``
+- ``PassForecast``
+- ``AlertsResponse``
+- ``ActiveAlert``
+
+### Explore, season, snow trend and snowpack
+
+- ``ExploreMetric``
+- ``ExploreResponse``
+- ``ExploreItem``
+- ``RankOrder``
+- ``ExplorePoints``
+- ``Coordinate``
+- ``CompositionResponse``
+- ``SeasonResponse``
+- ``SnowTrendResponse``
+- ``SnowpackResponse``
+- ``SnowpackPlumeResponse``
+
+### Maps (GeoJSON)
+
+- ``AlertOutlineCollection``
+- ``AvalancheZoneCollection``
+- ``GeoJSONGeometry``
+- ``BoundingBox``
+- ``AlertClass``
 
 ### Locations and the catalog
 
@@ -73,7 +110,7 @@ The SDK targets API contract v1. Guides live at
 
 ### Errors, retries and rate limits
 
-- ``EnsembleWeatherError``
+- ``OureaError``
 - ``ErrorCode``
 - ``NearestLocation``
 - ``RateLimit``

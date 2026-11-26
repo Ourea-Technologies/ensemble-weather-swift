@@ -79,12 +79,12 @@ public struct ProbabilityResult: Sendable, Hashable, Codable {
     public var from: Date?
     /// The window's end (exclusive).
     public var to: Date?
-    /// The share of members meeting the term, 0..1 (0.001); `nil` (never 0) when it cannot be
-    /// answered: ``nullReason`` says why.
-    public var probability: Double?
+    /// (JSON `probability`) The share of members meeting the term, 0..1 (0.001); `nil` (never 0)
+    /// when it cannot be answered: ``nullReason`` says why.
+    public var value: Double?
     /// Members that voted: for `total`, the members whose values cover the whole window; for `any`/`all`, those with a value in it.
     public var members: Int
-    /// Why ``probability`` is `nil`; `nil` when it is not.
+    /// Why ``value`` is `nil`; `nil` when it is not.
     public var nullReason: NullReason?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
@@ -92,7 +92,7 @@ public struct ProbabilityResult: Sendable, Hashable, Codable {
         term: String, variable: ForecastVariable, comparison: ProbabilityComparison,
         threshold: Double, windowStartHours: Int, windowEndHours: Int,
         aggregation: ProbabilityAggregation, from: Date? = nil, to: Date? = nil,
-        probability: Double? = nil, members: Int, nullReason: NullReason? = nil
+        value: Double? = nil, members: Int, nullReason: NullReason? = nil
     ) {
         self.term = term
         self.variable = variable
@@ -103,7 +103,7 @@ public struct ProbabilityResult: Sendable, Hashable, Codable {
         self.aggregation = aggregation
         self.from = from
         self.to = to
-        self.probability = probability
+        self.value = value
         self.members = members
         self.nullReason = nullReason
     }
@@ -118,7 +118,7 @@ public struct ProbabilityResult: Sendable, Hashable, Codable {
         case aggregation
         case from
         case to
-        case probability
+        case value = "probability"
         case members
         case nullReason = "null_reason"
     }
@@ -131,10 +131,10 @@ public struct WindowTotal: Sendable, Hashable, Codable {
     public var term: String
     /// Variable.
     public var variable: ForecastVariable
-    /// Window start hours.
-    public var windowStartHours: Int
-    /// Window end hours.
-    public var windowEndHours: Int
+    /// (JSON `window_start_hours`) Window start hours.
+    public var startHours: Int
+    /// (JSON `window_end_hours`) Window end hours.
+    public var endHours: Int
     /// From.
     public var from: Date?
     /// To.
@@ -149,36 +149,41 @@ public struct WindowTotal: Sendable, Hashable, Codable {
     public var members: Int
     /// Why ``quantiles`` is `nil`; `nil` when it is not.
     public var nullReason: NullReason?
+    /// -- how `quantiles` was computed; `null` exactly when `quantiles` is.
+    public var method: String?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        term: String, variable: ForecastVariable, windowStartHours: Int, windowEndHours: Int,
+        term: String, variable: ForecastVariable, startHours: Int, endHours: Int,
         from: Date? = nil, to: Date? = nil, aggregation: WindowTotalAggregation = .total,
-        quantiles: Quantiles? = nil, members: Int, nullReason: NullReason? = nil
+        quantiles: Quantiles? = nil, members: Int, nullReason: NullReason? = nil,
+        method: String? = nil
     ) {
         self.term = term
         self.variable = variable
-        self.windowStartHours = windowStartHours
-        self.windowEndHours = windowEndHours
+        self.startHours = startHours
+        self.endHours = endHours
         self.from = from
         self.to = to
         self.aggregation = aggregation
         self.quantiles = quantiles
         self.members = members
         self.nullReason = nullReason
+        self.method = method
     }
 
     enum CodingKeys: String, CodingKey {
         case term
         case variable
-        case windowStartHours = "window_start_hours"
-        case windowEndHours = "window_end_hours"
+        case startHours = "window_start_hours"
+        case endHours = "window_end_hours"
         case from
         case to
         case aggregation
         case quantiles
         case members
         case nullReason = "null_reason"
+        case method
     }
 }
 
@@ -235,13 +240,13 @@ public struct CircularStats: Sendable, Hashable, Codable {
 
 /// The distribution of the members' running totals at this hour.
 public struct MembersCumulative: Sendable, Hashable, Codable {
-    /// Precipitation.
-    public var precipitation: Quantiles?
-    /// Snowfall.
-    public var snowfall: Quantiles?
+    /// The members' distribution of the running precipitation total.
+    public var precipitation: MemberQuantiles?
+    /// The members' distribution of the running snowfall total.
+    public var snowfall: MemberQuantiles?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(precipitation: Quantiles? = nil, snowfall: Quantiles? = nil) {
+    public init(precipitation: MemberQuantiles? = nil, snowfall: MemberQuantiles? = nil) {
         self.precipitation = precipitation
         self.snowfall = snowfall
     }

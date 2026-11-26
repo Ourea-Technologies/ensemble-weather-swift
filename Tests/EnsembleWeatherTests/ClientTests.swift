@@ -13,12 +13,12 @@ struct ClientTests {
         let clock = FakeClock()
         let transport = MockTransport(
             results: Array(repeating: .failure(URLError(.networkConnectionLost)), count: 3))
-        let client = EnsembleWeatherClient(
+        let client = Client(
             configuration: testConfiguration(transport: transport, clock: clock))
         do {
             _ = try await client.attribution()
             Issue.record("expected an error")
-        } catch let error as EnsembleWeatherError {
+        } catch let error as OureaError {
             #expect(error.category == .connection)
         } catch {
             Issue.record("unexpected \(error)")
@@ -46,7 +46,7 @@ struct ClientTests {
                 headers: ["Retry-After": "5"]),
             jsonResponse(200, body: try vectorBody("attribution.json")),
         ])
-        let client = EnsembleWeatherClient(
+        let client = Client(
             configuration: testConfiguration(transport: transport, clock: clock))
         _ = try await client.attribution()
         #expect(transport.requests.count == 2)
@@ -66,11 +66,11 @@ struct ClientTests {
         let transport = MockTransport([
             jsonResponse(403, body: Data(body.utf8), headers: ["X-Request-Id": "header-id"])
         ])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         do {
             _ = try await client.getPointForecast(latitude: 45.3, longitude: -121.7)
             Issue.record("expected an error")
-        } catch let error as EnsembleWeatherError {
+        } catch let error as OureaError {
             #expect(error.category == .permission)
             #expect(error.code == .proRequired)
             #expect(error.requestID == "01JBQ6ZK3V8M4T2N7XQH5R9W0C")
@@ -88,16 +88,16 @@ struct ClientTests {
     @Test("Withdrawn error codes keep their string and map by status")
     func withdrawnCodes() {
         for code in ["FORBIDDEN", "GONE", "MODEL_RUN_NOT_FOUND", "AMBIGUOUS", "INVALID_MAX_HOURS"] {
-            #expect(EnsembleWeatherError.category(forCode: ErrorCode(rawValue: code)) == nil)
+            #expect(OureaError.category(forCode: ErrorCode(rawValue: code)) == nil)
         }
-        #expect(EnsembleWeatherError.category(forCode: .authUnavailable) == .unavailable)
-        #expect(EnsembleWeatherError.category(forCode: .outsideCoverage) == .outsideCoverage)
+        #expect(OureaError.category(forCode: .authUnavailable) == .unavailable)
+        #expect(OureaError.category(forCode: .outsideCoverage) == .outsideCoverage)
     }
 
     @Test("A cancelled task stops without retrying")
     func cancellation() async {
         let transport = MockTransport(results: [.failure(CancellationError())])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         await #expect(throws: CancellationError.self) { _ = try await client.attribution() }
         #expect(transport.requests.count == 1)
     }
@@ -108,7 +108,7 @@ struct ClientTests {
         let transport = MockTransport([
             jsonResponse(200, body: body, headers: ["Cache-Control": "private, max-age=60"])
         ])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         _ = try await client.attribution()
         let second = try await client.attribution()
         #expect(second.metadata.cacheStatus == .fresh)
@@ -124,7 +124,7 @@ struct ClientTests {
                     "RateLimit-Limit": "100", "RateLimit-Remaining": "7", "RateLimit-Reset": "30",
                 ])
         ])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         let response = try await client.attribution()
         #expect(response.metadata.rateLimit?.remaining == 7)
         #expect(client.rateLimit == RateLimit(limit: 100, remaining: 7, resetSeconds: 30))
@@ -135,12 +135,12 @@ struct ClientTests {
         let transport = MockTransport([
             jsonResponse(200, body: try vectorBody("forecast-prob-snow.json"))
         ])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         let snow = ProbabilityQuery.snowfall(atLeast: .inches(6))
         var options = ForecastOptions(units: .imperial, probabilities: [snow, snow])
         options.probabilities.append(.temperature(atMost: .fahrenheit(32), in: .hours(12)))
         let forecast = try await client.forecast(for: "or/mt-hood-meadows", options: options)
-        #expect(forecast.probabilities.map(\.probability) == [0.42, 0.42, 0.97])
+        #expect(forecast.probabilities.map(\.value) == [0.42, 0.42, 0.97])
         #expect(forecast.probability(for: snow)?.members == 131)
         #expect(forecast.probability(for: .snowfall(atLeast: .inches(7))) == nil)
     }
@@ -151,7 +151,7 @@ struct ClientTests {
             jsonResponse(200, body: try vectorBody("catalog-page-1.json")),
             jsonResponse(200, body: try vectorBody("catalog-page-2.json")),
         ])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         var iterator = client.catalogLocations().makeAsyncIterator()
         #expect(try await iterator.next()?.slug == "mt-hood-meadows")
         #expect(transport.requests.count == 1)
@@ -171,7 +171,7 @@ struct ClientTests {
         ])
         var configuration = testConfiguration(transport: transport, notices: notices)
         configuration.cache = nil
-        let client = EnsembleWeatherClient(configuration: configuration)
+        let client = Client(configuration: configuration)
         _ = try await client.attribution()
         _ = try await client.attribution()
         _ = try await client.searchLocations("hood")
@@ -181,7 +181,7 @@ struct ClientTests {
     @Test("Point routes send coordinates exactly as given and keep defaults out")
     func pointQueries() async throws {
         let transport = MockTransport([HTTPResponse(status: 418), HTTPResponse(status: 418)])
-        let client = EnsembleWeatherClient(
+        let client = Client(
             configuration: testConfiguration(apiKey: "ow_pro", transport: transport))
         _ = try? await client.getPointNearby(
             latitude: 45.3311, longitude: -121.6649, limit: 3, radiusKilometers: 50)
@@ -200,7 +200,7 @@ struct ClientTests {
     @Test("Forecast options serialise in canonical form")
     func forecastOptionQuery() async throws {
         let transport = MockTransport([HTTPResponse(status: 418)])
-        let client = EnsembleWeatherClient(configuration: testConfiguration(transport: transport))
+        let client = Client(configuration: testConfiguration(transport: transport))
         var options = ForecastOptions()
         options.elevations = .named(["summit", "base"])
         options.diagnostics = [.provenance]
@@ -223,16 +223,16 @@ struct ClientTests {
     @Test("A key from the environment is used when none is passed; an explicit key wins")
     func environmentKey() {
         #expect(
-            EnsembleWeatherClient.Configuration(environment: ["OUREA_API_KEY": "ow_env"]).apiKey
+            Client.Configuration(environment: ["OUREA_API_KEY": "ow_env"]).apiKey
                 == "ow_env")
         #expect(
-            EnsembleWeatherClient.Configuration(
+            Client.Configuration(
                 apiKey: "ow_arg", environment: ["OUREA_API_KEY": "ow_env"]
             ).apiKey == "ow_arg")
         #expect(
-            EnsembleWeatherClient.Configuration(environment: ["OUREA_API_KEY": ""]).apiKey == nil)
+            Client.Configuration(environment: ["OUREA_API_KEY": ""]).apiKey == nil)
         #expect(
-            EnsembleWeatherClient.Configuration(environment: [
+            Client.Configuration(environment: [
                 "OUREA_BASE_URL": "http://127.0.0.1:8080"
             ]).baseURL
                 .absoluteString == "http://127.0.0.1:8080")

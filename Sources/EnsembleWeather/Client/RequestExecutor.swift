@@ -21,7 +21,7 @@ struct RequestExecutor: Sendable {
     static let maximumBodyBytes = URLSessionTransport.defaultMaximumBodyBytes
     static let maximumRetryAfter: TimeInterval = 60
 
-    let configuration: EnsembleWeatherClient.Configuration
+    let configuration: Client.Configuration
     let lastRateLimit: Locked<RateLimit?>
 
     // MARK: - Sending
@@ -73,14 +73,14 @@ struct RequestExecutor: Sendable {
                 response = try await configuration.transport.send(request)
             } catch let error as CancellationError {
                 throw error
-            } catch let error as EnsembleWeatherError {
+            } catch let error as OureaError {
                 throw error
             } catch {
                 throw connectionFailure(error)
             }
             if Task.isCancelled { throw CancellationError() }
             guard response.body.count <= Self.maximumBodyBytes else {
-                throw EnsembleWeatherError.invalidResponse(
+                throw OureaError.invalidResponse(
                     "The response body is larger than the \(Self.maximumBodyBytes)-byte bound.",
                     status: response.status)
             }
@@ -98,13 +98,13 @@ struct RequestExecutor: Sendable {
                 guard let location = response.headers["Location"],
                     let next = URL(string: location, relativeTo: url)?.absoluteURL
                 else {
-                    throw EnsembleWeatherError.invalidResponse(
+                    throw OureaError.invalidResponse(
                         "A \(response.status) redirect without a usable Location.",
                         status: response.status)
                 }
                 redirects += 1
                 guard redirects <= Self.maximumRedirects else {
-                    throw EnsembleWeatherError.invalidResponse(
+                    throw OureaError.invalidResponse(
                         "More than \(Self.maximumRedirects) redirects.", status: response.status)
                 }
                 if !Self.isSameOrigin(next, url) { key = nil }
@@ -112,7 +112,7 @@ struct RequestExecutor: Sendable {
                 continue
             case 304:
                 guard var cached else {
-                    throw EnsembleWeatherError.invalidResponse(
+                    throw OureaError.invalidResponse(
                         "A 304 Not Modified with no cached response to reuse.", status: 304)
                 }
                 var merged = HTTPHeaders(cached.headers)
@@ -153,16 +153,16 @@ struct RequestExecutor: Sendable {
         let query = endpoint.query.encoded
         if !query.isEmpty { text += "?" + query }
         guard let url = URL(string: text) else {
-            throw EnsembleWeatherError.usage("Could not build a URL from the base URL \(base).")
+            throw OureaError.usage("Could not build a URL from the base URL \(base).")
         }
         return url
     }
 
     var userAgent: String {
         guard let suffix = configuration.userAgentSuffix, !suffix.isEmpty else {
-            return EnsembleWeatherVersion.userAgent
+            return SDKVersion.userAgent
         }
-        return EnsembleWeatherVersion.userAgent + " " + suffix
+        return SDKVersion.userAgent + " " + suffix
     }
 
     static func isSameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
@@ -206,12 +206,12 @@ struct RequestExecutor: Sendable {
 
     static let retryableStatuses: Set<Int> = [429, 502, 503, 504]
 
-    func apiError(from response: HTTPResponse) -> EnsembleWeatherError {
+    func apiError(from response: HTTPResponse) -> OureaError {
         let body = try? JSONDecoder().decode(ErrorBody.self, from: response.body)
         let code = body.map { ErrorCode(rawValue: $0.error) }
         let category =
-            code.flatMap(EnsembleWeatherError.category(forCode:))
-            ?? EnsembleWeatherError.category(forStatus: response.status)
+            code.flatMap(OureaError.category(forCode:))
+            ?? OureaError.category(forStatus: response.status)
         let message =
             body?.message
             ?? HTTPURLResponseText.reason(response.status)
@@ -221,7 +221,7 @@ struct RequestExecutor: Sendable {
                 RetryAfter.seconds($0, now: configuration.clock.now)
             }
         }
-        return EnsembleWeatherError(
+        return OureaError(
             category: category, status: response.status, code: code, message: redact(message),
             requestID: body?.requestID ?? response.headers["X-Request-Id"],
             docURL: body?.docURL.flatMap(URL.init(string:)), parameter: body?.parameter,
@@ -232,7 +232,7 @@ struct RequestExecutor: Sendable {
     private func connectionFailure(_ error: any Error) -> any Error {
         let urlError = error as? URLError
         if urlError?.code == .cancelled, Task.isCancelled { return CancellationError() }
-        let wrapped = EnsembleWeatherError(
+        let wrapped = OureaError(
             category: .connection,
             message: redact(
                 "No response from the API: \(urlError.map { "\($0.code.rawValue) " } ?? "")"

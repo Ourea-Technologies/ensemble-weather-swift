@@ -93,7 +93,7 @@ extension Threshold {
 
     /// Converts the value to the unit `system` uses for `variable`; a usage error when the
     /// unit does not measure that variable.
-    func value(for variable: ForecastVariable, in system: UnitSystem) throws(EnsembleWeatherError)
+    func value(for variable: ForecastVariable, in system: UnitSystem) throws(OureaError)
         -> Double
     {
         guard let dimension = variable.dimension else {

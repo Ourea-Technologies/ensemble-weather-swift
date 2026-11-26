@@ -8,7 +8,7 @@ public struct DailyForecast: Sendable, Hashable, Codable {
     /// Date.
     public var date: String
     /// A stable machine code to switch on -- the display text (`condition_text`) lowercased, each run of other characters one `_` (`partly_cloudy`, `rain_snow_mix_likely`).
-    public var condition: WeatherCondition
+    public var condition: Condition
     /// Human-readable weather condition for the day — a daytime label, on the same rule as the hourly `condition`.
     public var conditionText: String
     /// Machine-readable icon hint for frontends.
@@ -55,10 +55,30 @@ public struct DailyForecast: Sendable, Hashable, Codable {
     public var astro: DailyAstro
     /// Temperature climatology.
     public var temperatureClimatology: DayClimatology?
+    /// Present only on a part day -- the leading date of a run whose reference init falls after its local midnight (today, for most cycles) -- and absent on a whole day.
+    public var coveredFrom: Date?
+    /// Present only on a day part of which is a measurement -- the leading date, when the radar (MRMS radar-only) measured hours between its local midnight and the reference init -- and absent otherwise.
+    public var measuredPrecipitation: MeasuredPrecipitation?
+    /// The day's snow character.
+    public var snowCharacter: SnowCharacter?
+    /// The day's snow-to-liquid ratio, to one decimal: the ratio `snow_character` classifies on a day that is not `wet`.
+    public var snowToLiquidRatio: Double?
+    /// The snow level over the day's wet hours -- the hours the day's `precipitation_type` reads (the hours that serve a precipitation type): the lowest and highest hourly `ensemble.snow_level.mean` and their precipitation-weighted mean.
+    public var snowLevelRange: SnowLevelRange?
+    /// The day's snow level on the NWS scale -- the height of the 0.5 C wet-bulb.
+    public var snowLevelWetBulb: Quantiles?
+    /// `Snow_level_range` on the NWS scale -- over the same wet hours, the lowest and highest hourly `ensemble.snow_level_wet_bulb.mean` and their precipitation-weighted mean (which is `snow_level_wet_bulb.mean`).
+    public var snowLevelWetBulbRange: SnowLevelRange?
+    /// Normal.
+    public var normal: DayNormal?
+    /// Departure.
+    public var departure: DayDeparture?
+    /// Percentile.
+    public var percentile: DayPercentile?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        date: String, condition: WeatherCondition, conditionText: String,
+        date: String, condition: Condition, conditionText: String,
         conditionIcon: ConditionIcon, precipitationType: PrecipitationType? = nil, high: Quantiles,
         low: Quantiles, feelsLikeHigh: Quantiles? = nil, feelsLikeLow: Quantiles? = nil,
         totalPrecipitation: Quantiles, totalSnowfall: Quantiles? = nil,
@@ -67,7 +87,17 @@ public struct DailyForecast: Sendable, Hashable, Codable {
         totalPrecipitationIfWet: Quantiles? = nil, totalSnowfallIfWet: Quantiles? = nil,
         precipitationDisplay: PrecipDisplay, cloudCoverMean: Double? = nil, wind: DailyWind? = nil,
         stormOrientation: StormOrientation? = nil, stormOrientationDescription: String? = nil,
-        astro: DailyAstro, temperatureClimatology: DayClimatology? = nil
+        astro: DailyAstro, temperatureClimatology: DayClimatology? = nil,
+        coveredFrom: Date? = nil,
+        measuredPrecipitation: MeasuredPrecipitation? = nil,
+        snowCharacter: SnowCharacter? = nil,
+        snowToLiquidRatio: Double? = nil,
+        snowLevelRange: SnowLevelRange? = nil,
+        snowLevelWetBulb: Quantiles? = nil,
+        snowLevelWetBulbRange: SnowLevelRange? = nil,
+        normal: DayNormal? = nil,
+        departure: DayDeparture? = nil,
+        percentile: DayPercentile? = nil
     ) {
         self.date = date
         self.condition = condition
@@ -94,6 +124,16 @@ public struct DailyForecast: Sendable, Hashable, Codable {
         self.stormOrientationDescription = stormOrientationDescription
         self.astro = astro
         self.temperatureClimatology = temperatureClimatology
+        self.coveredFrom = coveredFrom
+        self.measuredPrecipitation = measuredPrecipitation
+        self.snowCharacter = snowCharacter
+        self.snowToLiquidRatio = snowToLiquidRatio
+        self.snowLevelRange = snowLevelRange
+        self.snowLevelWetBulb = snowLevelWetBulb
+        self.snowLevelWetBulbRange = snowLevelWetBulbRange
+        self.normal = normal
+        self.departure = departure
+        self.percentile = percentile
     }
 
     enum CodingKeys: String, CodingKey {
@@ -122,6 +162,16 @@ public struct DailyForecast: Sendable, Hashable, Codable {
         case stormOrientationDescription = "storm_orientation_description"
         case astro
         case temperatureClimatology = "temperature_climatology"
+        case coveredFrom = "covered_from"
+        case measuredPrecipitation = "measured_precipitation"
+        case snowCharacter = "snow_character"
+        case snowToLiquidRatio = "slr"
+        case snowLevelRange = "snow_level_range"
+        case snowLevelWetBulb = "snow_level_wet_bulb"
+        case snowLevelWetBulbRange = "snow_level_wet_bulb_range"
+        case normal
+        case departure
+        case percentile
     }
 }
 
@@ -167,18 +217,25 @@ public struct PrecipDisplay: Sendable, Hashable, Codable {
     public var chance: Double
     /// Amount.
     public var amount: Double?
+    /// The day's mean snowfall, the served `total_snowfall.mean`, in the request's snow units.
+    public var snowAmount: Double?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(kind: PrecipitationDisplayKind, chance: Double, amount: Double? = nil) {
+    public init(
+        kind: PrecipitationDisplayKind, chance: Double, amount: Double? = nil,
+        snowAmount: Double? = nil
+    ) {
         self.kind = kind
         self.chance = chance
         self.amount = amount
+        self.snowAmount = snowAmount
     }
 
     enum CodingKeys: String, CodingKey {
         case kind
         case chance
         case amount
+        case snowAmount = "snow_amount"
     }
 }
 
@@ -239,8 +296,8 @@ public struct DayClimatology: Sendable, Hashable, Codable {
 public struct ElevationForecast: Sendable, Hashable, Codable {
     /// Name.
     public var name: String
-    /// Elevation.
-    public var elevation: Double
+    /// (JSON `elevation`) Elevation.
+    public var height: Double
     /// Where this elevation was forecast — its own coordinates when the catalog has them, else the location's.
     public var latitude: Double
     /// Lon.
@@ -251,29 +308,54 @@ public struct ElevationForecast: Sendable, Hashable, Codable {
     public var daily: [DailyForecast]?
     /// Rolling snow totals at this elevation, as `forecast.snow_outlook` (omitted when there are no dailies).
     public var snowOutlook: SnowOutlook?
+    /// What the place is called, as `location.elevations[].display_name`; absent where the catalog has no name for it.
+    public var displayName: String?
+    /// A named spot's own nearby observation sensors, ranked around ITS point and elevation as the location's `nearest_sensors` are around the location's.
+    public var nearestSensors: [NearestSensor]?
+    /// -- rolling liquid totals at this elevation, as `forecast.precipitation_outlook`.
+    public var precipitationOutlook: PrecipOutlook?
+    /// This elevation's members in columns, as `forecast.plume` -- present only with `members=plume`, instead of `hourly`, `daily`, `snow_outlook` and `precipitation_outlook`.
+    public var plume: MemberPlume?
+    /// The snow on the ground at this elevation, as the response's own `snow_on_ground`; absent where no snowpack column runs for it.
+    public var snowOnGround: SnowOnGround?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        name: String, elevation: Double, latitude: Double, longitude: Double,
+        name: String, height: Double, latitude: Double, longitude: Double,
         hourly: [TimeSeriesPoint]? = nil,
-        daily: [DailyForecast]? = nil, snowOutlook: SnowOutlook? = nil
+        daily: [DailyForecast]? = nil, snowOutlook: SnowOutlook? = nil,
+        displayName: String? = nil,
+        nearestSensors: [NearestSensor]? = nil,
+        precipitationOutlook: PrecipOutlook? = nil,
+        plume: MemberPlume? = nil,
+        snowOnGround: SnowOnGround? = nil
     ) {
         self.name = name
-        self.elevation = elevation
+        self.height = height
         self.latitude = latitude
         self.longitude = longitude
         self.hourly = hourly
         self.daily = daily
         self.snowOutlook = snowOutlook
+        self.displayName = displayName
+        self.nearestSensors = nearestSensors
+        self.precipitationOutlook = precipitationOutlook
+        self.plume = plume
+        self.snowOnGround = snowOnGround
     }
 
     enum CodingKeys: String, CodingKey {
         case name
-        case elevation
+        case height = "elevation"
         case latitude = "lat"
         case longitude = "lon"
         case hourly
         case daily
         case snowOutlook = "snow_outlook"
+        case displayName = "display_name"
+        case nearestSensors = "nearest_sensors"
+        case precipitationOutlook = "precipitation_outlook"
+        case plume
+        case snowOnGround = "snow_on_ground"
     }
 }

@@ -296,7 +296,7 @@ extension ProbabilityAggregation: RawRepresentable, Codable {
 ///
 /// A value this SDK version does not know yet decodes to ``unknown(_:)``, keeping
 /// the raw string, so a newer server never breaks decoding.
-public enum WeatherCondition: Sendable, Hashable {
+public enum Condition: Sendable, Hashable {
     /// `sunny`.
     case sunny
     /// `mostly_sunny`.
@@ -353,11 +353,15 @@ public enum WeatherCondition: Sendable, Hashable {
     case freezingRainLikely
     /// `freezing_rain`.
     case freezingRain
+    /// `light_snow`.
+    case lightSnow
+    /// `heavy_snow`.
+    case heavySnow
     /// A value this SDK version does not know, with its raw string.
     case unknown(String)
 }
 
-extension WeatherCondition: RawRepresentable, Codable {
+extension Condition: RawRepresentable, Codable {
     /// Creates a value from its wire string; an unrecognised string is ``unknown(_:)``.
     public init(rawValue: String) {
         switch rawValue {
@@ -389,6 +393,8 @@ extension WeatherCondition: RawRepresentable, Codable {
         case "chance_freezing_rain": self = .chanceFreezingRain
         case "freezing_rain_likely": self = .freezingRainLikely
         case "freezing_rain": self = .freezingRain
+        case "light_snow": self = .lightSnow
+        case "heavy_snow": self = .heavySnow
         default: self = .unknown(rawValue)
         }
     }
@@ -424,6 +430,8 @@ extension WeatherCondition: RawRepresentable, Codable {
         case .chanceFreezingRain: "chance_freezing_rain"
         case .freezingRainLikely: "freezing_rain_likely"
         case .freezingRain: "freezing_rain"
+        case .lightSnow: "light_snow"
+        case .heavySnow: "heavy_snow"
         case .unknown(let raw): raw
         }
     }
@@ -510,6 +518,14 @@ public enum ConditionIcon: Sendable, Hashable {
     case nightRainLikely
     /// `night_showers`.
     case nightShowers
+    /// `light_snow`.
+    case lightSnow
+    /// `heavy_snow`.
+    case heavySnow
+    /// `night_light_snow`.
+    case nightLightSnow
+    /// `night_heavy_snow`.
+    case nightHeavySnow
     /// A value this SDK version does not know, with its raw string.
     case unknown(String)
 }
@@ -556,6 +572,10 @@ extension ConditionIcon: RawRepresentable, Codable {
         case "night_chance_rain": self = .nightChanceRain
         case "night_rain_likely": self = .nightRainLikely
         case "night_showers": self = .nightShowers
+        case "light_snow": self = .lightSnow
+        case "heavy_snow": self = .heavySnow
+        case "night_light_snow": self = .nightLightSnow
+        case "night_heavy_snow": self = .nightHeavySnow
         default: self = .unknown(rawValue)
         }
     }
@@ -601,6 +621,10 @@ extension ConditionIcon: RawRepresentable, Codable {
         case .nightChanceRain: "night_chance_rain"
         case .nightRainLikely: "night_rain_likely"
         case .nightShowers: "night_showers"
+        case .lightSnow: "light_snow"
+        case .heavySnow: "heavy_snow"
+        case .nightLightSnow: "night_light_snow"
+        case .nightHeavySnow: "night_heavy_snow"
         case .unknown(let raw): raw
         }
     }
@@ -742,6 +766,8 @@ public enum MembersView: Sendable, Hashable {
     case plume
     /// `full`.
     case full
+    /// `pool`.
+    case pool
     /// A value this SDK version does not know, with its raw string.
     case unknown(String)
 }
@@ -752,6 +778,7 @@ extension MembersView: RawRepresentable, Codable {
         switch rawValue {
         case "plume": self = .plume
         case "full": self = .full
+        case "pool": self = .pool
         default: self = .unknown(rawValue)
         }
     }
@@ -761,6 +788,7 @@ extension MembersView: RawRepresentable, Codable {
         switch self {
         case .plume: "plume"
         case .full: "full"
+        case .pool: "pool"
         case .unknown(let raw): raw
         }
     }
@@ -1115,6 +1143,8 @@ public enum AttributionSourceKind: Sendable, Hashable {
     case places
     /// `basemap`.
     case basemap
+    /// `avalanche_forecast`.
+    case avalancheForecast
     /// A value this SDK version does not know, with its raw string.
     case unknown(String)
 }
@@ -1131,6 +1161,7 @@ extension AttributionSourceKind: RawRepresentable, Codable {
         case "terrain": self = .terrain
         case "places": self = .places
         case "basemap": self = .basemap
+        case "avalanche_forecast": self = .avalancheForecast
         default: self = .unknown(rawValue)
         }
     }
@@ -1146,6 +1177,7 @@ extension AttributionSourceKind: RawRepresentable, Codable {
         case .terrain: "terrain"
         case .places: "places"
         case .basemap: "basemap"
+        case .avalancheForecast: "avalanche_forecast"
         case .unknown(let raw): raw
         }
     }

@@ -15,8 +15,8 @@ public struct CurrentConditionsResponse: Sendable, Hashable, Codable {
     public var sensorCount: Int
     /// Each sensor's latest reading set, in the request's `units`.
     public var sensors: [SensorObservation]
-    /// "Right now" flattened: the `nowcast_hours` hour nearest the request time, read field by field (see the schema).
-    public var current: CurrentConditions?
+    /// (JSON `current`) "Right now" flattened: the `nowcast_hours` hour nearest the request time, read field by field (see the schema).
+    public var now: CurrentConditions?
     /// When this overlay was assembled (the request time); the `nowcast_hours` window is relative to it.
     public var asOf: Date
     /// The reference init of the cycle the band was read from (null when no cycle is servable).
@@ -29,27 +29,35 @@ public struct CurrentConditionsResponse: Sendable, Hashable, Codable {
     public var attribution: ResponseAttribution
     /// The live nowcast sources `nowcast_hours` and `current` were built without because their read did not answer in time (or failed).
     public var nowcastUnavailable: [NowcastSource]?
+    /// The place summary, written by the server from served values only, so every client shows the same words.
+    public var summary: PlaceSummary?
+    /// The mountain pass forecast at the pass's own point and elevation.
+    public var pass: PassForecast?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         location: LocationReference, alerts: [ActiveAlert], alertsAsOf: Date, sensorCount: Int,
-        sensors: [SensorObservation], current: CurrentConditions? = nil, asOf: Date,
+        sensors: [SensorObservation], now: CurrentConditions? = nil, asOf: Date,
         modelRunInitializedAt: Date? = nil, nowcastHours: [TimeSeriesPoint]? = nil,
         units: UnitSystem, attribution: ResponseAttribution,
-        nowcastUnavailable: [NowcastSource]? = nil
+        nowcastUnavailable: [NowcastSource]? = nil,
+        summary: PlaceSummary? = nil,
+        pass: PassForecast? = nil
     ) {
         self.location = location
         self.alerts = alerts
         self.alertsAsOf = alertsAsOf
         self.sensorCount = sensorCount
         self.sensors = sensors
-        self.current = current
+        self.now = now
         self.asOf = asOf
         self.modelRunInitializedAt = modelRunInitializedAt
         self.nowcastHours = nowcastHours
         self.units = units
         self.attribution = attribution
         self.nowcastUnavailable = nowcastUnavailable
+        self.summary = summary
+        self.pass = pass
     }
 
     enum CodingKeys: String, CodingKey {
@@ -58,13 +66,15 @@ public struct CurrentConditionsResponse: Sendable, Hashable, Codable {
         case alertsAsOf = "alerts_as_of"
         case sensorCount = "sensor_count"
         case sensors
-        case current
+        case now = "current"
         case asOf = "as_of"
         case modelRunInitializedAt = "model_run_initialized_at"
         case nowcastHours = "nowcast_hours"
         case units
         case attribution
         case nowcastUnavailable = "nowcast_unavailable"
+        case summary
+        case pass
     }
 }
 
@@ -76,12 +86,12 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
     public var temperature: Double
     /// Same unit as `temperature`.
     public var feelsLike: Double?
-    /// The hour's stable condition code, as `TimeSeriesPoint.condition` (`partly_cloudy`).
-    public var condition: String
-    /// The display text for `condition`, as `TimeSeriesPoint.condition_text`.
-    public var conditionText: String
-    /// The hour's icon hint, as `TimeSeriesPoint.condition_icon`.
-    public var conditionIcon: ConditionIcon
+    /// (JSON `condition`) The hour's stable condition code, as `TimeSeriesPoint.condition` (`partly_cloudy`).
+    public var code: String
+    /// (JSON `condition_text`) The display text for `condition`, as `TimeSeriesPoint.condition_text`.
+    public var text: String
+    /// (JSON `condition_icon`) The hour's icon hint, as `TimeSeriesPoint.condition_icon`.
+    public var icon: ConditionIcon
     /// M/s (metric, kelvin) or mph (imperial).
     public var windSpeed: Double
     /// Same unit as `wind_speed`.
@@ -98,22 +108,28 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
     public var source: ConditionsSource
     /// The surface station whose reading anchored temperature, dewpoint and wind at this hour.
     public var station: ConditionsStation?
+    /// The hour in progress's `measured`, the hour `condition` and `precipitation_probability` are read from: the radar's published accumulation for that clock hour so far is served above 0 (above 0.00 mm and 0.000 in), so `condition` states the ...
+    public var isMeasured: Bool?
+    /// Cloud cover, percent (0-100), the mean of the hour in progress's `ensemble.cloud_cover`: the hour `condition` is read from, so the number and the label describe one hour.
+    public var cloudCover: Double?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        time: Date, temperature: Double, feelsLike: Double? = nil, condition: String,
-        conditionText: String, conditionIcon: ConditionIcon, windSpeed: Double,
+        time: Date, temperature: Double, feelsLike: Double? = nil, code: String,
+        text: String, icon: ConditionIcon, windSpeed: Double,
         windGust: Double? = nil,
         windDirection: Double, relativeHumidity: Double? = nil, dewpoint: Double? = nil,
         precipitationProbability: Double? = nil, source: ConditionsSource,
-        station: ConditionsStation? = nil
+        station: ConditionsStation? = nil,
+        isMeasured: Bool? = nil,
+        cloudCover: Double? = nil
     ) {
         self.time = time
         self.temperature = temperature
         self.feelsLike = feelsLike
-        self.condition = condition
-        self.conditionText = conditionText
-        self.conditionIcon = conditionIcon
+        self.code = code
+        self.text = text
+        self.icon = icon
         self.windSpeed = windSpeed
         self.windGust = windGust
         self.windDirection = windDirection
@@ -122,15 +138,17 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
         self.precipitationProbability = precipitationProbability
         self.source = source
         self.station = station
+        self.isMeasured = isMeasured
+        self.cloudCover = cloudCover
     }
 
     enum CodingKeys: String, CodingKey {
         case time
         case temperature
         case feelsLike = "feels_like"
-        case condition
-        case conditionText = "condition_text"
-        case conditionIcon = "condition_icon"
+        case code = "condition"
+        case text = "condition_text"
+        case icon = "condition_icon"
         case windSpeed = "wind_speed"
         case windGust = "wind_gust"
         case windDirection = "wind_direction"
@@ -139,29 +157,35 @@ public struct CurrentConditions: Sendable, Hashable, Codable {
         case precipitationProbability = "precipitation_probability"
         case source
         case station
+        case isMeasured = "measured"
+        case cloudCover = "cloud_cover"
     }
 }
 
 /// The surface station whose reading anchored temperature, dewpoint and wind at this hour.
 public struct ConditionsStation: Sendable, Hashable, Codable {
-    /// The station's id in its network, as `nearest_sensors[].station_id`.
-    public var stationID: String
+    /// (JSON `station_id`) The station's id in its network, as `nearest_sensors[].station_id`.
+    public var id: String
     /// The station's registry name, else its id.
     public var name: String
     /// Observation time.
     public var observationTime: Date
+    /// `True` when the station's reading was calm (0 wind speed; a METAR's `00000KT`).
+    public var isCalm: Bool?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
-    public init(stationID: String, name: String, observationTime: Date) {
-        self.stationID = stationID
+    public init(id: String, name: String, observationTime: Date, isCalm: Bool? = nil) {
+        self.id = id
         self.name = name
         self.observationTime = observationTime
+        self.isCalm = isCalm
     }
 
     enum CodingKeys: String, CodingKey {
-        case stationID = "station_id"
+        case id = "station_id"
         case name
         case observationTime = "observation_time"
+        case isCalm = "calm"
     }
 }
 
@@ -173,8 +197,8 @@ public struct SensorObservation: Sendable, Hashable, Codable {
     public var name: String
     /// Source.
     public var source: String
-    /// Observation time.
-    public var observationTime: Date
+    /// (JSON `observation_time`) Observation time.
+    public var observedAt: Date
     /// °C, °F (imperial) or K (kelvin).
     public var temperature: Double?
     /// As `temperature`.
@@ -217,10 +241,14 @@ public struct SensorObservation: Sendable, Hashable, Codable {
     public var solarRadiation: Double?
     /// Road-weather pavement state as the network reports it.
     public var pavementCondition: String?
+    /// Straight-line surface distance from the location to the sensor, in km (at most 25), as `nearest_sensors[].distance_km`.
+    public var distanceKilometers: Double?
+    /// The sensor's registry elevation minus the location's, in the caller's length units (m metric, ft imperial), as `nearest_sensors[].elevation_diff`.
+    public var elevationDifference: Double?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        stationID: String, name: String, source: String, observationTime: Date,
+        stationID: String, name: String, source: String, observedAt: Date,
         temperature: Double? = nil, dewpoint: Double? = nil, relativeHumidity: Double? = nil,
         windSpeed: Double? = nil, windGust: Double? = nil, windDirection: Double? = nil,
         pressure: Double? = nil, precipitation: Double? = nil, precipitationRate: Double? = nil,
@@ -228,12 +256,14 @@ public struct SensorObservation: Sendable, Hashable, Codable {
         visibility: Double? = nil, cloudCover: Double? = nil, ceilingHeight: Double? = nil,
         snowDepth: Double? = nil, snowWaterEquivalent: Double? = nil,
         snowWaterEquivalentPercentOfMedian: Double? = nil, snowfall: Double? = nil,
-        solarRadiation: Double? = nil, pavementCondition: String? = nil
+        solarRadiation: Double? = nil, pavementCondition: String? = nil,
+        distanceKilometers: Double? = nil,
+        elevationDifference: Double? = nil
     ) {
         self.stationID = stationID
         self.name = name
         self.source = source
-        self.observationTime = observationTime
+        self.observedAt = observedAt
         self.temperature = temperature
         self.dewpoint = dewpoint
         self.relativeHumidity = relativeHumidity
@@ -255,13 +285,15 @@ public struct SensorObservation: Sendable, Hashable, Codable {
         self.snowfall = snowfall
         self.solarRadiation = solarRadiation
         self.pavementCondition = pavementCondition
+        self.distanceKilometers = distanceKilometers
+        self.elevationDifference = elevationDifference
     }
 
     enum CodingKeys: String, CodingKey {
         case stationID = "station_id"
         case name
         case source
-        case observationTime = "observation_time"
+        case observedAt = "observation_time"
         case temperature
         case dewpoint
         case relativeHumidity = "relative_humidity"
@@ -283,6 +315,8 @@ public struct SensorObservation: Sendable, Hashable, Codable {
         case snowfall
         case solarRadiation = "solar_radiation"
         case pavementCondition = "pavement_condition"
+        case distanceKilometers = "distance_km"
+        case elevationDifference = "elevation_diff"
     }
 }
 
@@ -290,32 +324,32 @@ public struct SensorObservation: Sendable, Hashable, Codable {
 public struct AlertsResponse: Sendable, Hashable, Codable {
     /// The one location reference.
     public var location: LocationReference
-    /// Alert count.
-    public var alertCount: Int
+    /// (JSON `alert_count`) Alert count.
+    public var count: Int
     /// Snapshot timestamp (see /current alerts_as_of).
     public var asOf: Date
-    /// Alerts.
-    public var alerts: [ActiveAlert]
+    /// (JSON `alerts`) Alerts.
+    public var items: [ActiveAlert]
     /// Attribution.
     public var attribution: ResponseAttribution
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        location: LocationReference, alertCount: Int, asOf: Date, alerts: [ActiveAlert],
+        location: LocationReference, count: Int, asOf: Date, items: [ActiveAlert],
         attribution: ResponseAttribution
     ) {
         self.location = location
-        self.alertCount = alertCount
+        self.count = count
         self.asOf = asOf
-        self.alerts = alerts
+        self.items = items
         self.attribution = attribution
     }
 
     enum CodingKeys: String, CodingKey {
         case location
-        case alertCount = "alert_count"
+        case count = "alert_count"
         case asOf = "as_of"
-        case alerts
+        case items = "alerts"
         case attribution
     }
 }
@@ -341,12 +375,42 @@ public struct ActiveAlert: Sendable, Hashable, Codable {
     public var expires: Date
     /// Omitted when NWS supplies none.
     public var ends: Date?
+    /// When NWS issued this message.
+    public var sent: Date?
+    /// The CAP message type, snake_case.
+    public var messageType: String?
+    /// The ids of the messages this one replaces.
+    public var references: [String]?
+    /// SenderName.
+    public var senderName: String?
+    /// The places this message covers, as NWS words them.
+    public var areaDesc: String?
+    /// The full NWS text, unedited.
+    public var description: String?
+    /// What NWS says to do, unedited.
+    public var instruction: String?
+    /// The NWS forecast page for this location.
+    public var sourceURL: String?
+    /// The stable identity of this event.
+    public var eventKey: String?
+    /// The VTEC action of this message, lower case.
+    public var vtecAction: String?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         id: String, event: String, severity: String, urgency: String, certainty: String,
         headline: String,
-        onset: Date? = nil, expires: Date, ends: Date? = nil
+        onset: Date? = nil, expires: Date, ends: Date? = nil,
+        sent: Date? = nil,
+        messageType: String? = nil,
+        references: [String]? = nil,
+        senderName: String? = nil,
+        areaDesc: String? = nil,
+        description: String? = nil,
+        instruction: String? = nil,
+        sourceURL: String? = nil,
+        eventKey: String? = nil,
+        vtecAction: String? = nil
     ) {
         self.id = id
         self.event = event
@@ -357,6 +421,16 @@ public struct ActiveAlert: Sendable, Hashable, Codable {
         self.onset = onset
         self.expires = expires
         self.ends = ends
+        self.sent = sent
+        self.messageType = messageType
+        self.references = references
+        self.senderName = senderName
+        self.areaDesc = areaDesc
+        self.description = description
+        self.instruction = instruction
+        self.sourceURL = sourceURL
+        self.eventKey = eventKey
+        self.vtecAction = vtecAction
     }
 
     enum CodingKeys: String, CodingKey {
@@ -369,5 +443,15 @@ public struct ActiveAlert: Sendable, Hashable, Codable {
         case onset
         case expires
         case ends
+        case sent
+        case messageType = "message_type"
+        case references
+        case senderName = "sender_name"
+        case areaDesc = "area_desc"
+        case description
+        case instruction
+        case sourceURL = "source_url"
+        case eventKey = "event_key"
+        case vtecAction = "vtec_action"
     }
 }

@@ -13,14 +13,14 @@ import Foundation
 /// ```swift
 /// do {
 ///     _ = try await client.getPointForecast(latitude: 51.5, longitude: -0.1)
-/// } catch let error as EnsembleWeatherError where error.category == .outsideCoverage {
+/// } catch let error as OureaError where error.category == .outsideCoverage {
 ///     print("Outside the forecast domain: \(error.message)")
 /// }
 /// ```
 ///
 /// No error ever contains the API key: not in ``message``, not in its
 /// description, and not in ``localizedDescription``.
-public struct EnsembleWeatherError: Error, Sendable, Hashable {
+public struct OureaError: Error, Sendable, Hashable {
     /// The kind of failure (BEHAVIOR 8).
     ///
     /// Mapped from the API's code first, then from the HTTP status when the code is unknown or
@@ -39,7 +39,7 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
         case outsideCoverage
         /// Over a rate budget (429).
         ///
-        /// See ``EnsembleWeatherError/retryAfter``.
+        /// See ``OureaError/retryAfter``.
         case rateLimited
         /// The server could not answer (5xx), for example `FORECAST_UNAVAILABLE`.
         case unavailable
@@ -115,7 +115,7 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
     static func category(forCode code: ErrorCode) -> Category? {
         switch code {
         case .invalidAPIKey, .unauthorized: .authentication
-        case .proRequired: .permission
+        case .proRequired, .plusRequired: .permission
         case .locationNotFound, .notFound: .notFound
         case .badRequest, .invalidCoordinates, .invalidElevation, .elevationRequired:
             .invalidRequest
@@ -141,7 +141,7 @@ public struct EnsembleWeatherError: Error, Sendable, Hashable {
     }
 }
 
-extension EnsembleWeatherError: LocalizedError, CustomStringConvertible {
+extension OureaError: LocalizedError, CustomStringConvertible {
     /// A one-line description: category, status, code and message.
     public var errorDescription: String? { description }
 
@@ -182,6 +182,8 @@ public struct ErrorCode: RawRepresentable, Sendable, Hashable, ExpressibleByStri
     public static let unauthorized: Self = "UNAUTHORIZED"
     /// `PRO_REQUIRED`: the request needs a Pro key.
     public static let proRequired: Self = "PRO_REQUIRED"
+    /// `PLUS_REQUIRED`: the route needs a Plus or Pro key (the snow trend).
+    public static let plusRequired: Self = "PLUS_REQUIRED"
     /// `LOCATION_NOT_FOUND`: no such location.
     public static let locationNotFound: Self = "LOCATION_NOT_FOUND"
     /// `NOT_FOUND`: no such resource or route.

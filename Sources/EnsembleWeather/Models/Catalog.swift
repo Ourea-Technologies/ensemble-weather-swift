@@ -298,16 +298,16 @@ public struct CatalogStation: Sendable, Hashable, Codable {
     public var aliases: [String]?
     /// The observation network, snake_case (`snotel`, `rwis_wsdot`, `mt_mesonet`).
     public var network: String?
-    /// Source station id.
-    public var sourceStationID: String?
+    /// (JSON `source_station_id`) Source station id.
+    public var sourceID: String?
     /// Elevation msl m.
     public var elevationMSLMeters: Double?
     /// Sensor height agl m.
     public var sensorHeightAGLMeters: Double?
     /// Sensor capabilities.
     public var sensorCapabilities: [String]?
-    /// The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
-    public var stationStatus: String?
+    /// (JSON `station_status`) The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
+    public var status: String?
     /// Last report at.
     public var lastReportAt: Date?
     /// Free-form JSON of the last report.
@@ -318,8 +318,8 @@ public struct CatalogStation: Sendable, Hashable, Codable {
     public var decommissionDate: String?
     /// Update frequency minutes.
     public var updateFrequencyMinutes: Int?
-    /// Station url.
-    public var stationURL: String?
+    /// (JSON `station_url`) Station url.
+    public var url: String?
     /// Data url.
     public var dataURL: String?
     /// Description short.
@@ -340,12 +340,12 @@ public struct CatalogStation: Sendable, Hashable, Codable {
         slug: String, state: String, name: String, latitude: Double, longitude: Double,
         elevationMeters: Double, type: LocationType, timezone: String, county: String? = nil,
         country: String? = nil, aliases: [String]? = nil, network: String? = nil,
-        sourceStationID: String? = nil, elevationMSLMeters: Double? = nil,
+        sourceID: String? = nil, elevationMSLMeters: Double? = nil,
         sensorHeightAGLMeters: Double? = nil, sensorCapabilities: [String]? = nil,
-        stationStatus: String? = nil, lastReportAt: Date? = nil,
+        status: String? = nil, lastReportAt: Date? = nil,
         lastReportSummary: JSONValue? = nil, installDate: String? = nil,
         decommissionDate: String? = nil, updateFrequencyMinutes: Int? = nil,
-        stationURL: String? = nil, dataURL: String? = nil, descriptionShort: String? = nil,
+        url: String? = nil, dataURL: String? = nil, descriptionShort: String? = nil,
         descriptionLong: String? = nil, metaTitle: String? = nil, metaDescription: String? = nil,
         tags: [String]? = nil, isFeatured: Bool? = nil
     ) {
@@ -361,17 +361,17 @@ public struct CatalogStation: Sendable, Hashable, Codable {
         self.country = country
         self.aliases = aliases
         self.network = network
-        self.sourceStationID = sourceStationID
+        self.sourceID = sourceID
         self.elevationMSLMeters = elevationMSLMeters
         self.sensorHeightAGLMeters = sensorHeightAGLMeters
         self.sensorCapabilities = sensorCapabilities
-        self.stationStatus = stationStatus
+        self.status = status
         self.lastReportAt = lastReportAt
         self.lastReportSummary = lastReportSummary
         self.installDate = installDate
         self.decommissionDate = decommissionDate
         self.updateFrequencyMinutes = updateFrequencyMinutes
-        self.stationURL = stationURL
+        self.url = url
         self.dataURL = dataURL
         self.descriptionShort = descriptionShort
         self.descriptionLong = descriptionLong
@@ -394,17 +394,17 @@ public struct CatalogStation: Sendable, Hashable, Codable {
         case country
         case aliases
         case network
-        case sourceStationID = "source_station_id"
+        case sourceID = "source_station_id"
         case elevationMSLMeters = "elevation_msl_m"
         case sensorHeightAGLMeters = "sensor_height_agl_m"
         case sensorCapabilities = "sensor_capabilities"
-        case stationStatus = "station_status"
+        case status = "station_status"
         case lastReportAt = "last_report_at"
         case lastReportSummary = "last_report_summary"
         case installDate = "install_date"
         case decommissionDate = "decommission_date"
         case updateFrequencyMinutes = "update_frequency_minutes"
-        case stationURL = "station_url"
+        case url = "station_url"
         case dataURL = "data_url"
         case descriptionShort = "description_short"
         case descriptionLong = "description_long"
@@ -441,16 +441,16 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
     public var aliases: [String]?
     /// The observation network, snake_case (`snotel`, `rwis_wsdot`, `mt_mesonet`).
     public var network: String?
-    /// Source station id.
-    public var sourceStationID: String?
+    /// (JSON `source_station_id`) Source station id.
+    public var sourceID: String?
     /// Elevation msl m.
     public var elevationMSLMeters: Double?
     /// Sensor height agl m.
     public var sensorHeightAGLMeters: Double?
     /// Sensor capabilities.
     public var sensorCapabilities: [String]?
-    /// The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
-    public var stationStatus: String?
+    /// (JSON `station_status`) The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
+    public var status: String?
     /// Last report at.
     public var lastReportAt: Date?
     /// Free-form JSON of the last report.
@@ -461,8 +461,8 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
     public var decommissionDate: String?
     /// Update frequency minutes.
     public var updateFrequencyMinutes: Int?
-    /// Station url.
-    public var stationURL: String?
+    /// (JSON `station_url`) Station url.
+    public var url: String?
     /// Data url.
     public var dataURL: String?
     /// Description short.
@@ -487,22 +487,25 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
     public var template: CatalogTemplateSummary?
     /// Content.
     public var content: [CatalogResolvedEntry]?
+    /// Whether search engines should index this station's page.
+    public var isIndexable: Bool?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         slug: String, state: String, name: String, latitude: Double, longitude: Double,
         elevationMeters: Double, type: LocationType, timezone: String, county: String? = nil,
         country: String? = nil, aliases: [String]? = nil, network: String? = nil,
-        sourceStationID: String? = nil, elevationMSLMeters: Double? = nil,
+        sourceID: String? = nil, elevationMSLMeters: Double? = nil,
         sensorHeightAGLMeters: Double? = nil, sensorCapabilities: [String]? = nil,
-        stationStatus: String? = nil, lastReportAt: Date? = nil,
+        status: String? = nil, lastReportAt: Date? = nil,
         lastReportSummary: JSONValue? = nil, installDate: String? = nil,
         decommissionDate: String? = nil, updateFrequencyMinutes: Int? = nil,
-        stationURL: String? = nil, dataURL: String? = nil, descriptionShort: String? = nil,
+        url: String? = nil, dataURL: String? = nil, descriptionShort: String? = nil,
         descriptionLong: String? = nil, metaTitle: String? = nil, metaDescription: String? = nil,
         tags: [String]? = nil, isFeatured: Bool? = nil, photos: [CatalogPhoto],
         webcams: [CatalogWebcam], primaryLocation: CatalogPrimaryLocation? = nil,
-        template: CatalogTemplateSummary? = nil, content: [CatalogResolvedEntry]? = nil
+        template: CatalogTemplateSummary? = nil, content: [CatalogResolvedEntry]? = nil,
+        isIndexable: Bool? = nil
     ) {
         self.slug = slug
         self.state = state
@@ -516,17 +519,17 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
         self.country = country
         self.aliases = aliases
         self.network = network
-        self.sourceStationID = sourceStationID
+        self.sourceID = sourceID
         self.elevationMSLMeters = elevationMSLMeters
         self.sensorHeightAGLMeters = sensorHeightAGLMeters
         self.sensorCapabilities = sensorCapabilities
-        self.stationStatus = stationStatus
+        self.status = status
         self.lastReportAt = lastReportAt
         self.lastReportSummary = lastReportSummary
         self.installDate = installDate
         self.decommissionDate = decommissionDate
         self.updateFrequencyMinutes = updateFrequencyMinutes
-        self.stationURL = stationURL
+        self.url = url
         self.dataURL = dataURL
         self.descriptionShort = descriptionShort
         self.descriptionLong = descriptionLong
@@ -539,6 +542,7 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
         self.primaryLocation = primaryLocation
         self.template = template
         self.content = content
+        self.isIndexable = isIndexable
     }
 
     enum CodingKeys: String, CodingKey {
@@ -554,17 +558,17 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
         case country
         case aliases
         case network
-        case sourceStationID = "source_station_id"
+        case sourceID = "source_station_id"
         case elevationMSLMeters = "elevation_msl_m"
         case sensorHeightAGLMeters = "sensor_height_agl_m"
         case sensorCapabilities = "sensor_capabilities"
-        case stationStatus = "station_status"
+        case status = "station_status"
         case lastReportAt = "last_report_at"
         case lastReportSummary = "last_report_summary"
         case installDate = "install_date"
         case decommissionDate = "decommission_date"
         case updateFrequencyMinutes = "update_frequency_minutes"
-        case stationURL = "station_url"
+        case url = "station_url"
         case dataURL = "data_url"
         case descriptionShort = "description_short"
         case descriptionLong = "description_long"
@@ -577,6 +581,7 @@ public struct CatalogStationDetail: Sendable, Hashable, Codable {
         case primaryLocation = "primary_location"
         case template
         case content
+        case isIndexable = "indexable"
     }
 }
 
@@ -622,33 +627,38 @@ public struct CatalogPrimaryLocation: Sendable, Hashable, Codable {
 public struct CatalogElevation: Sendable, Hashable, Codable {
     /// Label.
     public var label: String
-    /// Elevation m.
-    public var elevationMeters: Double
+    /// (JSON `elevation_m`) Elevation m.
+    public var heightMeters: Double
     /// Lat override.
     public var latitudeOverride: Double?
     /// Lon override.
     public var longitudeOverride: Double?
     /// Whether this is the default elevation to show in the UI.
     public var isDefault: Bool
+    /// What the place is called, for display.
+    public var displayName: String?
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        label: String, elevationMeters: Double, latitudeOverride: Double? = nil,
-        longitudeOverride: Double? = nil, isDefault: Bool
+        label: String, heightMeters: Double, latitudeOverride: Double? = nil,
+        longitudeOverride: Double? = nil, isDefault: Bool,
+        displayName: String? = nil
     ) {
         self.label = label
-        self.elevationMeters = elevationMeters
+        self.heightMeters = heightMeters
         self.latitudeOverride = latitudeOverride
         self.longitudeOverride = longitudeOverride
         self.isDefault = isDefault
+        self.displayName = displayName
     }
 
     enum CodingKeys: String, CodingKey {
         case label
-        case elevationMeters = "elevation_m"
+        case heightMeters = "elevation_m"
         case latitudeOverride = "lat_override"
         case longitudeOverride = "lon_override"
         case isDefault = "is_default"
+        case displayName = "display_name"
     }
 }
 
@@ -732,8 +742,8 @@ public struct CatalogNearbyStation: Sendable, Hashable, Codable {
     public var name: String
     /// The observation network, snake_case (`snotel`, `rwis_wsdot`, `mt_mesonet`).
     public var network: String
-    /// The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
-    public var stationStatus: String
+    /// (JSON `station_status`) The live-feed status, snake_case: `active`, `intermittent`, `inactive`, `decommissioned` or `unknown`.
+    public var status: String
     /// Distance km.
     public var distanceKilometers: Double?
     /// Elevation diff m.
@@ -743,13 +753,13 @@ public struct CatalogNearbyStation: Sendable, Hashable, Codable {
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        slug: String, name: String, network: String, stationStatus: String,
+        slug: String, name: String, network: String, status: String,
         distanceKilometers: Double? = nil, elevationDifferenceMeters: Double? = nil, isPrimary: Bool
     ) {
         self.slug = slug
         self.name = name
         self.network = network
-        self.stationStatus = stationStatus
+        self.status = status
         self.distanceKilometers = distanceKilometers
         self.elevationDifferenceMeters = elevationDifferenceMeters
         self.isPrimary = isPrimary
@@ -759,7 +769,7 @@ public struct CatalogNearbyStation: Sendable, Hashable, Codable {
         case slug
         case name
         case network
-        case stationStatus = "station_status"
+        case status = "station_status"
         case distanceKilometers = "distance_km"
         case elevationDifferenceMeters = "elevation_diff_m"
         case isPrimary = "is_primary"
@@ -795,26 +805,26 @@ public struct CatalogTemplateSummary: Sendable, Hashable, Codable {
     public var id: String
     /// Null = wildcard scope.
     public var locationType: String?
-    /// Null = wildcard scope.
-    public var templateVariant: String?
+    /// (JSON `template_variant`) Null = wildcard scope.
+    public var variant: String?
     /// Spec.
     public var spec: [CatalogTemplateSection]
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
-        id: String, locationType: String? = nil, templateVariant: String? = nil,
+        id: String, locationType: String? = nil, variant: String? = nil,
         spec: [CatalogTemplateSection]
     ) {
         self.id = id
         self.locationType = locationType
-        self.templateVariant = templateVariant
+        self.variant = variant
         self.spec = spec
     }
 
     enum CodingKeys: String, CodingKey {
         case id
         case locationType = "location_type"
-        case templateVariant = "template_variant"
+        case variant = "template_variant"
         case spec
     }
 }
@@ -833,15 +843,15 @@ public struct CatalogResolvedEntry: Sendable, Hashable, Codable {
     public var slot: String
     /// Display order.
     public var displayOrder: Int
-    /// The requested locale if ANY field of this entry carried a translation, else the entry's base locale.
-    public var resolvedLocale: String
+    /// (JSON `resolved_locale`) The requested locale if ANY field of this entry carried a translation, else the entry's base locale.
+    public var locale: String
     /// Updated at.
     public var updatedAt: Date
 
     /// Creates a value; the SDK builds these from responses, and tests or previews can build their own.
     public init(
         id: String, contentTypeKey: String, title: String, body: JSONValue, slot: String,
-        displayOrder: Int, resolvedLocale: String, updatedAt: Date
+        displayOrder: Int, locale: String, updatedAt: Date
     ) {
         self.id = id
         self.contentTypeKey = contentTypeKey
@@ -849,7 +859,7 @@ public struct CatalogResolvedEntry: Sendable, Hashable, Codable {
         self.body = body
         self.slot = slot
         self.displayOrder = displayOrder
-        self.resolvedLocale = resolvedLocale
+        self.locale = locale
         self.updatedAt = updatedAt
     }
 
@@ -860,7 +870,7 @@ public struct CatalogResolvedEntry: Sendable, Hashable, Codable {
         case body
         case slot
         case displayOrder = "display_order"
-        case resolvedLocale = "resolved_locale"
+        case locale = "resolved_locale"
         case updatedAt = "updated_at"
     }
 }
